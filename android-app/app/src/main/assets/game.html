@@ -1,0 +1,4242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>村庄连连看 · 转盘抽奖</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;overflow:hidden;background:#1a2a1a;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+#app{position:relative;width:100%;height:100%;overflow:hidden}
+#bg{position:absolute;inset:0;background:#6ab34a;overflow:hidden}
+#bgc{display:block;width:100%;height:100%}
+#bg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.32) 0%,rgba(0,0,0,.05) 26%,rgba(0,0,0,.05) 66%,rgba(0,0,0,.45) 100%)}
+.screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;padding:12px;z-index:2}
+.screen.active{display:flex}
+h1{font-size:26px;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.75);margin:0 0 6px;letter-spacing:2px;text-align:center}
+h1.small{font-size:22px}
+.sub{color:#eef7e6;font-size:14px;text-shadow:0 1px 4px rgba(0,0,0,.85);margin:0 0 18px;text-align:center;line-height:1.7}
+.home-tip{color:#eef7e6;font-size:14px;text-shadow:0 1px 4px rgba(0,0,0,.85);margin:12px 0 0}
+.home-tip b{color:#ffd75e;font-size:18px}
+.btn{border:none;border-radius:26px;padding:13px 34px;font-size:16px;font-weight:600;color:#fff;background:linear-gradient(180deg,#5fbf4a,#3d8f2e);box-shadow:0 4px 0 #2a6a1f,0 6px 16px rgba(0,0,0,.4);cursor:pointer;margin:7px;transition:transform .08s,box-shadow .08s;font-family:inherit}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #2a6a1f,0 3px 10px rgba(0,0,0,.4)}
+.btn.orange{background:linear-gradient(180deg,#ffb347,#e8862a);box-shadow:0 4px 0 #b3641a,0 6px 16px rgba(0,0,0,.4)}
+.btn.orange:active{box-shadow:0 1px 0 #b3641a,0 3px 10px rgba(0,0,0,.4)}
+.btn.blue{background:linear-gradient(180deg,#5aa9e6,#2f7fc1);box-shadow:0 4px 0 #1f5c8f,0 6px 16px rgba(0,0,0,.4)}
+.btn.blue:active{box-shadow:0 1px 0 #1f5c8f,0 3px 10px rgba(0,0,0,.4)}
+.btn:disabled{filter:grayscale(.75);opacity:.6;cursor:not-allowed;transform:none}
+.btn.small{padding:9px 20px;font-size:14px;border-radius:20px}
+#hud{position:absolute;top:0;left:0;right:0;padding:8px 10px;display:flex;justify-content:space-between;align-items:center;z-index:5;gap:6px}
+.hud-pill{background:rgba(0,0,0,.58);color:#fff;border-radius:16px;padding:6px 12px;font-size:14px;font-weight:600;backdrop-filter:blur(4px);display:flex;align-items:center;gap:6px;white-space:nowrap;border:none;font-family:inherit}
+.hud-pill b{color:#ffd75e}
+button.hud-pill{cursor:pointer;padding:6px 10px}
+#game{padding:58px 12px 76px}
+#boardWrap{position:relative;width:100%;max-width:min(560px,calc(100vh - 200px));margin:auto;padding:5px;background:rgba(255,255,255,.18);border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,.5);backdrop-filter:blur(3px)}
+#board{display:grid;gap:3px;width:100%;aspect-ratio:1/1}
+.tile{position:relative;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:clamp(15px,5vw,30px);line-height:1;background:linear-gradient(180deg,#fffdf5,#f0e6cf);box-shadow:inset 0 -2px 0 rgba(0,0,0,.12),0 1px 3px rgba(0,0,0,.25);cursor:pointer;user-select:none;transition:transform .1s,box-shadow .1s,opacity .18s;overflow:hidden;font-family:"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol",sans-serif}
+.tile:active{transform:scale(.94)}
+.tile-ico{width:84%;height:84%;object-fit:contain;display:block;pointer-events:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.28))}
+.tile.sel{background:linear-gradient(180deg,#ffe98a,#ffcf3d);box-shadow:0 0 0 3px #ff9d00,0 0 14px #ffb300;transform:scale(1.04)}
+.tile.hint{animation:hintPulse .7s ease-in-out 2}
+@keyframes hintPulse{0%,100%{box-shadow:inset 0 -2px 0 rgba(0,0,0,.12)}50%{box-shadow:0 0 0 3px #4fc3f7,0 0 14px #4fc3f7}}
+.tile.gone{opacity:0;transform:scale(.4);pointer-events:none}
+.tile.empty{background:transparent;box-shadow:none;cursor:default;pointer-events:none}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.tile.shake{animation:shake .22s}
+#lines{position:absolute;pointer-events:none;z-index:4}
+#bottomBar{position:absolute;bottom:0;left:0;right:0;padding:10px 12px 16px;display:flex;justify-content:center;gap:10px;z-index:5;flex-wrap:wrap}
+#wheelWrap{position:relative;width:min(76vw,310px);height:min(76vw,310px);margin:6px 0 10px}
+#wheel{width:100%;height:100%;border-radius:50%;box-shadow:0 0 0 8px #fff8e1,0 0 0 12px #c9a227,0 10px 30px rgba(0,0,0,.55);transition:transform 4.2s cubic-bezier(.17,.67,.16,1);display:block}
+#pointer{position:absolute;top:-14px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:15px solid transparent;border-right:15px solid transparent;border-top:26px solid #e53935;filter:drop-shadow(0 3px 4px rgba(0,0,0,.5));z-index:3}
+#wheelCenter{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:56px;height:56px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#ffd54f 60%,#e8a317);box-shadow:0 3px 10px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#8a5a00;z-index:2;cursor:pointer;border:2px solid #fff;font-family:inherit}
+#modal{position:absolute;inset:0;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;z-index:20;padding:20px}
+#modal.show{display:flex}
+.modal-box{background:linear-gradient(180deg,#fffdf6,#f6ecd6);border-radius:20px;padding:24px 22px;max-width:340px;width:100%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.6);border:3px solid #ffd75e;animation:pop .25s ease-out}
+@keyframes pop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+.modal-box h2{margin:0 0 10px;font-size:20px;color:#5a3d00}
+.modal-box p{margin:0 0 16px;font-size:14px;color:#6b5a3a;line-height:1.7}
+.modal-icon{font-size:52px;margin-bottom:6px}
+.modal-btns{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin-top:2px}
+.modal-btns .btn{font-size:15px;padding:11px 22px;margin:4px}
+#adOverlay{position:absolute;inset:0;background:#000;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:30;color:#fff;padding:20px}
+#adOverlay.show{display:flex}
+#adCountdown{font-size:44px;font-weight:800;color:#ffd75e;margin:10px 0}
+.ad-text{font-size:15px;color:#dfe9d6;margin:4px 0}
+.ad-bar{width:min(80%,300px);height:8px;background:#333;border-radius:4px;overflow:hidden;margin-top:14px}
+.ad-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#5fbf4a,#ffd75e);transition:width .1s linear}
+.chance-row{display:flex;gap:8px;align-items:center;justify-content:center;margin:6px 0;flex-wrap:wrap}
+.chance-badge{background:rgba(0,0,0,.58);color:#fff;border-radius:14px;padding:6px 14px;font-size:14px;font-weight:600}
+.chance-badge b{color:#ffd75e;font-size:16px}
+.progress-dots{display:flex;gap:8px;justify-content:center;margin:6px 0 4px}
+.dot{width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.28);border:2px solid rgba(255,255,255,.6);transition:all .3s}
+.dot.on{background:#ffd75e;border-color:#fff;box-shadow:0 0 10px #ffd75e}
+.prize-progress-tip{font-size:14px;color:#eef7e6;text-shadow:0 1px 4px rgba(0,0,0,.85);margin:2px 0 8px}
+.prize-list{width:min(92%,360px);max-height:44vh;overflow-y:auto;margin:8px 0}
+.prize-item{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.94);border-radius:12px;padding:10px 12px;margin-bottom:8px;box-shadow:0 3px 10px rgba(0,0,0,.25)}
+.prize-item .ico{width:44px;height:44px;border-radius:10px;object-fit:cover;display:block;flex:0 0 auto;background:#f0e6cf}
+.prize-item .txt{flex:1;text-align:left;font-size:14px;color:#4a3a1a;line-height:1.5}
+.prize-item .txt b{display:block;font-size:15px;color:#2e5c1a}
+.prize-item .tag{font-size:12px;padding:3px 8px;border-radius:10px;background:#e8f5e0;color:#3d8f2e;font-weight:700;white-space:nowrap}
+.prize-item .tag.lock{background:#f0e6cf;color:#a08a5a}
+#toast{position:fixed;left:50%;bottom:calc(78px + env(safe-area-inset-bottom));transform:translate(-50%,14px) scale(.94);display:flex;align-items:center;gap:8px;background:rgba(22,30,18,.92);color:#fff;padding:11px 18px;border-radius:16px;border:1px solid rgba(255,255,255,.14);font-size:14px;font-weight:600;z-index:40;opacity:0;pointer-events:none;transition:opacity .26s ease,transform .26s cubic-bezier(.2,1.2,.4,1);text-align:center;max-width:88vw;line-height:1.6;box-shadow:0 10px 26px rgba(0,0,0,.38)}
+#toast.show{opacity:1;transform:translate(-50%,0) scale(1)}
+#toast .ti{display:none;font-size:17px;line-height:1}
+#toast.ok{background:linear-gradient(180deg,rgba(56,138,58,.97),rgba(30,92,36,.97));border-color:rgba(190,245,186,.6);overflow:hidden;padding-bottom:15px}
+#toast.ok .ti{display:inline-block;animation:tiPop .46s cubic-bezier(.2,1.6,.4,1) both}
+#toast.ok::after{content:'';position:absolute;left:14px;right:14px;bottom:6px;height:2px;border-radius:2px;background:rgba(255,255,255,.85);transform-origin:left;animation:tbar 1.7s linear both}
+@keyframes tiPop{0%{transform:scale(.2) rotate(-28deg);opacity:0}62%{transform:scale(1.2) rotate(6deg);opacity:1}100%{transform:scale(1) rotate(0)}}
+@keyframes tbar{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+.result-box{background:rgba(255,255,255,.96);border-radius:20px;padding:26px 24px;text-align:center;max-width:320px;width:100%;box-shadow:0 16px 40px rgba(0,0,0,.5)}
+.result-box h2{margin:0 0 8px;color:#3d8f2e;font-size:22px}
+.result-box .stars{font-size:34px;margin:6px 0 10px;letter-spacing:4px}
+.result-box p{margin:0 0 16px;color:#6b5a3a;font-size:14px;line-height:1.7}
+
+/* ===== 转盘界面优化 ===== */
+#wheelScreen{justify-content:flex-start;padding:16px 12px 14px;overflow-y:auto}
+.wheel-head{display:flex;flex-direction:column;align-items:center;gap:7px;width:100%;margin-bottom:4px}
+.wheel-title{margin:0;font-size:24px;font-weight:800;letter-spacing:3px;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.7),0 0 18px rgba(255,215,94,.45)}
+.balance-row{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
+.balance-badge{background:linear-gradient(180deg,rgba(0,0,0,.62),rgba(0,0,0,.45));color:#fff;border-radius:999px;padding:6px 14px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.24);backdrop-filter:blur(4px)}
+.balance-badge b{color:#ffd75e;font-size:16px;font-variant-numeric:tabular-nums}
+.btn-music{border:none;cursor:pointer;font-family:inherit}
+.btn-music.off{opacity:.62}
+#wheelWrap{position:relative;width:min(78vw,320px);height:min(78vw,320px);margin:8px 0 4px;filter:drop-shadow(0 14px 26px rgba(0,0,0,.45))}
+#wheel{display:block;width:100%;height:100%;border-radius:50%;box-shadow:0 0 0 6px #fff8e1,0 0 0 11px #d9a92c,0 0 26px rgba(255,215,94,.5)}
+#pointer{transform-origin:50% 0}
+#wheelWrap.spin #pointer{animation:ptrBounce .3s ease-in-out infinite}
+@keyframes ptrBounce{0%,100%{transform:translateX(-50%) rotate(0)}50%{transform:translateX(-50%) rotate(-11deg)}}
+.wheel-actions{display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:8px;width:100%}
+#btnSpin{min-width:212px;font-size:17px;padding:13px 30px}
+#btnSpin .cost{font-size:13px;font-weight:500;opacity:.92}
+.sub-actions{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:2px}
+.wheel-foot{font-size:12px;line-height:1.7;color:#eaf5e0;text-align:center;margin:10px 0 0;max-width:340px;text-shadow:0 1px 3px rgba(0,0,0,.85)}
+/* ===== 中奖弹窗 ===== */
+.modal-box{position:relative;overflow:hidden}
+.modal-box.award-box{border-color:#ffd75e;box-shadow:0 20px 50px rgba(0,0,0,.6),0 0 44px rgba(255,215,94,.4)}
+.modal-box.award-box::before{content:"";position:absolute;inset:-30% -40%;background:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.7) 50%,transparent 58%);animation:shineSweep 2.8s ease-in-out .2s infinite;pointer-events:none}
+@keyframes shineSweep{0%{transform:translateX(-70%)}60%,100%{transform:translateX(70%)}}
+.award{position:relative;text-align:center}
+.award-ring{position:relative;width:148px;height:148px;margin:0 auto 12px;border-radius:50%;padding:6px;background:conic-gradient(from 0deg,#fff6d0,#ffd45e,#f3b32b,#fff6d0);box-shadow:0 0 28px rgba(255,199,61,.8);animation:ringTurn 5s linear infinite}
+@keyframes ringTurn{to{transform:rotate(360deg)}}
+.award-ring img{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;background:#fff8e1}
+.award-ring .award-emoji{display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:radial-gradient(circle at 38% 30%,#fffdf0,#ffe6a0);font-size:64px}
+.award-ring.locked img{filter:grayscale(.72) brightness(.92)}
+.award-lock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:50px;text-shadow:0 2px 8px rgba(0,0,0,.6)}
+.award-kicker{margin:0 0 2px;font-size:13px;letter-spacing:4px;color:#a08a5a}
+.award-name{margin:0 0 4px;font-size:21px;font-weight:800;color:#5a3d00;line-height:1.35}
+.award-amount{margin:2px 0 4px;font-size:46px;font-weight:900;color:#e08e12;line-height:1.1;text-shadow:0 3px 0 #fff3cf,0 8px 16px rgba(224,142,18,.4);font-variant-numeric:tabular-nums;animation:amountPop .5s cubic-bezier(.2,1.5,.4,1) both}
+@keyframes amountPop{from{transform:scale(.55);opacity:0}to{transform:scale(1);opacity:1}}
+.award-tag{display:inline-block;margin-bottom:8px;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;color:#3d8f2e;background:#e8f5e0}
+.award-tag.lock{color:#a08a5a;background:#f0e6cf}
+.award-sub{margin:6px 0 12px;font-size:14px;line-height:1.7;color:#6b5a3a}
+#confetti{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:26}
+/* ===== 收货地址弹窗 ===== */
+#shipModal .mini-card{max-width:360px;text-align:left;max-height:86vh;overflow-y:auto}
+#shipModal h3{text-align:center}
+.ship-field{margin-bottom:10px}
+.ship-field label{display:block;font-size:13px;color:#6b5c3c;margin-bottom:4px;font-weight:700}
+.ship-row{display:flex;gap:8px}
+.ship-row .ship-field{flex:1;min-width:0}
+.ship-input{width:100%;box-sizing:border-box;min-height:44px;padding:10px 12px;border-radius:10px;border:1px solid #e0d2a8;background:#fff;font-size:15px;font-family:inherit;color:#4a3a1a}
+.ship-tip{font-size:12px;color:#8a7a58;line-height:1.6;margin:0 0 10px;text-align:left}
+.ship-err{min-height:18px;font-size:13px;color:#b33a2b;font-weight:700;margin-bottom:6px}
+.admin-orders-filter{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.admin-orders-filter input,.admin-orders-filter select{flex:1 1 110px;min-height:42px;padding:8px;border-radius:10px;border:1px solid #e0d2a8;font-size:14px;font-family:inherit;background:#fff;color:#4a3a1a;box-sizing:border-box}
+.order-item{border:1px solid #e6d7ae;border-radius:12px;padding:10px;margin-bottom:8px;background:#fffdf6}
+.order-line{font-size:13px;line-height:1.7;color:#4a3a1a;word-break:break-all}
+.order-meta{font-size:12px;color:#8a7a58}
+/* ===== 登录页 ===== */
+#login{justify-content:center;align-items:center;overflow-y:auto;padding:calc(20px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom))}
+.login-card{width:100%;max-width:380px;box-sizing:border-box;background:#fffdf3;border-radius:22px;padding:26px 20px 18px;box-shadow:0 18px 44px rgba(0,0,0,.45);text-align:center}
+.login-logo{font-size:42px;line-height:1}
+.login-title{margin:8px 0 2px;font-size:21px;font-weight:800;color:#3f3320}
+.login-sub{margin:0 0 22px;font-size:13px;color:#8a7a58}
+.btn-wx{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:52px;border:none;border-radius:26px;background:linear-gradient(180deg,#41d069,#1aad19);color:#fff;font-size:17px;font-weight:800;letter-spacing:.5px;box-shadow:0 5px 0 #10840f,0 8px 20px rgba(26,173,25,.34);cursor:pointer;font-family:inherit;transition:transform .1s}
+.btn-wx:active{transform:translateY(3px);box-shadow:0 2px 0 #10840f}
+.btn-wx[disabled]{opacity:.8;filter:saturate(.75)}
+.btn-wx .wx-mark{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.22);font-size:13px;font-weight:800}
+.agree{display:flex;align-items:flex-start;gap:8px;margin:16px 0 2px;text-align:left;font-size:13px;color:#6b5c3c;line-height:1.7}
+.agree input{width:19px;height:19px;flex:0 0 19px;margin:1px 0 0;accent-color:#1aad19}
+.agree a{color:#1a7fd4;font-weight:700;text-decoration:none}
+.login-status{min-height:20px;font-size:13px;line-height:1.6;margin:6px 0 0;color:#8a7a58}
+.login-status.loading{color:#1a7fd4;font-weight:700}
+.login-status.error{color:#b33a2b;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px}
+.login-other{margin-top:16px;border-top:1px dashed #e6d7ae;padding-top:10px}
+.link-btn{display:block;width:100%;background:none;border:none;color:#8a7a58;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;padding:10px;min-height:44px;text-decoration:underline}
+.other-panel{display:none;margin-top:4px;text-align:left}
+.other-panel.show{display:block}
+.login-input{width:100%;box-sizing:border-box;min-height:46px;padding:12px;border-radius:12px;border:1px solid #e0d2a8;background:#fff;font-size:16px;font-family:inherit;color:#4a3a1a;margin-bottom:8px}
+.mini-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:22px;z-index:70}
+.mini-modal.show{display:flex}
+.mini-card{width:100%;max-width:320px;background:#fffdf3;border-radius:18px;padding:20px;text-align:center;box-shadow:0 18px 44px rgba(0,0,0,.4)}
+.mini-card h3{margin:0 0 8px;font-size:17px;font-weight:800;color:#3f3320}
+.mini-card p{margin:0 0 14px;font-size:14px;line-height:1.75;color:#6b5c3c;text-align:left}
+/* ===== 每日签到 ===== */
+.home-links{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.home-chip{position:relative;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;color:#4a3a1a;background:linear-gradient(180deg,#fffdf3,#ffe9b8);border-radius:999px;padding:9px 16px;box-shadow:0 3px 0 #d9b871;min-height:44px}
+.cloud-state{margin-top:8px;font-size:13px;color:#e7f6d9;text-shadow:0 1px 3px rgba(0,0,0,.85)}
+.cloud-state.off{color:#ffd75e}
+.home-chip .dot{position:absolute;top:2px;right:4px;width:9px;height:9px;border-radius:50%;background:#e8453c;box-shadow:0 0 0 2px #fff}
+.sign-head{text-align:center;margin-bottom:8px}
+.sign-title{margin:0;font-size:20px;font-weight:800;color:#5a3d00}
+.sign-streak{margin:2px 0 0;font-size:13px;color:#a08a5a}
+.sign-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0}
+.sign-day{border-radius:12px;border:1px solid #f0dfae;background:#fffdf3;padding:6px 3px;text-align:center}
+.sign-day .d{display:block;font-size:12px;font-weight:700;color:#8a7a58}
+.sign-day .b{display:block;font-size:14px;font-weight:800;color:#c47f00;line-height:1.3}
+.sign-day .c{display:block;font-size:12px;font-weight:700;color:#2f8a3e}
+.sign-day.done{background:#eef7e6;border-color:#a8d79a}
+.sign-day.done .d{color:#3d8f2e}
+.sign-day.today{background:#fff6d3;border-color:#f0a83c;box-shadow:inset 0 0 0 2px #ffd75e}
+.sign-tip{font-size:13px;line-height:1.7;color:#8a7a58;margin:8px 0 10px;text-align:left}
+/* ===== 后台 ===== */
+#adminLogin,#admin{justify-content:flex-start;align-items:stretch;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:calc(12px + env(safe-area-inset-top)) 12px calc(16px + env(safe-area-inset-bottom))}
+.admin-wrap{width:100%;max-width:430px;margin:0 auto;box-sizing:border-box;background:#fffdf3;border-radius:18px;padding:14px;box-shadow:0 18px 40px rgba(0,0,0,.45)}
+.admin-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.admin-title{margin:0;font-size:19px;font-weight:800;color:#5a3d00}
+.adm-label{display:block;font-size:13px;font-weight:700;color:#8a7a58;margin:8px 0 4px;text-align:left}
+.adm-input{width:100%;box-sizing:border-box;padding:12px;border-radius:12px;border:1px solid #e0d2a8;background:#fff;font-size:16px;font-family:inherit;color:#4a3a1a;min-height:46px}
+.adm-input:focus{outline:2px solid #f0c04a;outline-offset:0}
+.adm-err{min-height:18px;font-size:13px;color:#c0392b;margin:6px 0 2px;text-align:left}
+.admin-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px;margin-bottom:6px}
+.admin-card{background:#fff6d3;border:1px solid #f0dfae;border-radius:14px;padding:8px 10px;text-align:left}
+.admin-card span{display:block;font-size:12px;color:#8a7a58}
+.admin-card b{font-size:18px;color:#4a3a1a;font-variant-numeric:tabular-nums}
+.admin-sub{margin:12px 0 6px;font-size:14px;font-weight:800;color:#5a3d00;text-align:left}
+.admin-list{display:flex;flex-direction:column;gap:4px}
+.admin-row{display:flex;justify-content:space-between;gap:8px;padding:6px 8px;border-radius:10px;background:#fff9e6;font-size:13px;color:#4a3a1a;text-align:left}
+.admin-row span{color:#8a7a58}
+.admin-empty{font-size:13px;color:#8a7a58;text-align:left;padding:4px 0}
+.cfg-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px dashed #ecdcb4;font-size:13px;color:#4a3a1a;text-align:left}
+.cfg-row input{width:80px;flex:0 0 80px;box-sizing:border-box;padding:8px;border-radius:10px;border:1px solid #e0d2a8;background:#fff;font-size:16px;font-family:inherit;text-align:right;color:#4a3a1a;min-height:38px}
+.admin-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;justify-content:center;position:sticky;bottom:0;z-index:2;background:linear-gradient(180deg,rgba(255,253,243,0),#fffdf3 38%);padding:10px 0 2px}
+.admin-actions .btn{flex:1 1 44%;margin:0;padding:12px 10px;font-size:15px;min-height:46px;box-sizing:border-box}
+.admin-row{min-height:38px;align-items:center}
+.admin-sub{display:flex;align-items:center;gap:6px}
+.admin-card b{line-height:1.25}
+@media(max-width:360px){
+  .admin-wrap{padding:12px;border-radius:16px}
+  .admin-cards{grid-template-columns:repeat(2,1fr);gap:6px}
+  .admin-card{padding:7px 8px}
+  .admin-card b{font-size:16px}
+  .admin-actions .btn{flex:1 1 100%}
+}
+/* ===== 金豆商城 ===== */
+.modal-box{max-height:84vh;overflow-y:auto}
+.shop-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px}
+.shop-title{margin:0;font-size:20px;font-weight:800;color:#5a3d00}
+.shop-balance{font-size:14px;font-weight:700;color:#8a5a00;background:#fff3cf;border:1px solid #f0c04a;border-radius:999px;padding:4px 12px;white-space:nowrap}
+.shop-balance b{font-size:17px;color:#c47f00;font-variant-numeric:tabular-nums}
+.shop-list{display:flex;flex-direction:column;gap:8px;margin:0 0 10px}
+.shop-row{display:flex;align-items:center;gap:10px;padding:10px;border-radius:14px;border:1px solid #f0dfae;background:#fffdf3;text-align:left}
+.shop-ico{width:44px;height:44px;flex:0 0 44px;display:flex;align-items:center;justify-content:center;font-size:23px;border-radius:12px;background:linear-gradient(180deg,#fff6d3,#ffe3a3);border:1px solid #f0c04a}
+.shop-info{flex:1;min-width:0}
+.shop-name{font-size:15px;font-weight:700;color:#4a3a1a;line-height:1.35}
+.shop-desc{font-size:13px;color:#8a7a58;line-height:1.5;margin-top:2px}
+.shop-buy{flex:0 0 auto;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;color:#fff;padding:9px 13px;border-radius:12px;background:linear-gradient(180deg,#ffb347,#ef9317);box-shadow:0 3px 0 #c97a0d;min-width:84px}
+.shop-buy:disabled{background:linear-gradient(180deg,#cfc6b1,#b7ac94);box-shadow:0 3px 0 #9c9179;cursor:not-allowed}
+.shop-tier{display:flex;align-items:baseline;gap:8px;margin:12px 0 6px;padding-top:4px;font-size:13px;font-weight:800;color:#7a5b12;border-top:1px dashed #e6d7ae}
+.shop-tier:first-child{border-top:none;margin-top:2px}
+.shop-tier-note{font-size:12px;font-weight:400;color:#9a8a63}
+.shop-stock{font-size:12px;color:#6b8a3c;margin-top:2px}
+.shop-stock.out{color:#b33a2b;font-weight:700}
+.shop-log{display:flex;align-items:center;gap:8px;font-size:13px;color:#4a3a1a;border:1px solid #e6d7ae;border-radius:12px;padding:10px;margin-bottom:8px;background:#fffdf6;text-align:left}
+.shop-log-main{flex:1;min-width:0}
+.shop-log-name{font-weight:700;font-size:14px}
+.shop-log-meta{font-size:12px;color:#8a7a58;margin-top:2px;word-break:break-all}
+.shop-voucher{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#7a5b12}
+.shop-buy:disabled{background:#e6ddca;box-shadow:0 3px 0 #cbbfa8;color:#8b8474;cursor:not-allowed}
+.shop-tip{font-size:13px;line-height:1.7;color:#8a7a58;margin:0 0 10px;text-align:left}
+/* ===== 金豆 ===== */
+.bean-banner{display:flex;align-items:center;gap:8px;margin:2px 0 8px;padding:9px 20px;border-radius:16px;border:2px solid #f0c04a;background:linear-gradient(180deg,#fff6d3,#ffe09a);box-shadow:0 4px 14px rgba(0,0,0,.32);font-size:14px;font-weight:700;color:#8a5a00}
+.bean-banner b{font-size:20px;color:#c47f00;font-variant-numeric:tabular-nums}
+
+@media(max-height:640px){h1{font-size:22px}.sub{margin-bottom:10px;font-size:13px}#wheelWrap{width:min(62vw,240px);height:min(62vw,240px)}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="bg"><canvas id="bgc"></canvas></div>
+
+  <section class="screen active" id="home">
+    <h1>村庄连连看</h1>
+    <p class="sub">消除全部方块即可通关<br>通关得抽奖机会 · 看广告也能抽</p>
+    <button class="btn" id="btnStart">开始游戏</button>
+    <button class="btn orange" id="btnGoWheel">转盘抽奖</button>
+    <button class="btn blue" id="btnGoPrizes">我的奖品</button>
+    <p class="home-tip">抽奖机会 <b id="homeChance">0</b> 次 · 金豆 <b id="homeBeans">0</b></p>
+    <div class="home-links">
+      <button class="home-chip" id="btnLogin">👤 微信登录</button>
+      <button class="home-chip" id="btnSign">📅 每日签到<i class="dot" id="signDot"></i></button>
+      <button class="home-chip" id="btnAdmin">⚙️ 管理后台</button>
+      <button class="home-chip" id="btnExportHtml">💾 导出网页</button>
+    </div>
+    <div class="cloud-state" id="cloudState">☁️ 正在连接云端…</div>
+  </section>
+
+  <section class="screen" id="game">
+    <div id="hud">
+      <div class="hud-pill">剩余 <b id="hudLeft">0</b></div>
+      <div class="hud-pill">时间 <b id="hudTime">00:00</b></div>
+      <div class="hud-pill">机会 <b id="hudChance">0</b></div>
+      <div class="hud-pill">🔄 道具 <b id="hudShuffle">0</b></div>
+      <button class="hud-pill" id="btnSfx" title="音效开关">🔊</button>
+    </div>
+    <div id="boardWrap">
+      <div id="board"></div>
+      <canvas id="lines"></canvas>
+    </div>
+    <div id="bottomBar">
+      <button class="btn small blue" id="btnHint">提示 -1</button>
+      <button class="btn small orange" id="btnShuffle">重排 -1</button>
+      <button class="btn small blue" id="btnShop2">🛒 商城</button>
+      <button class="btn small orange" id="btnPropAd">📺 看广告领重排</button>
+      <button class="btn small" id="btnBackHome">返回</button>
+    </div>
+  </section>
+
+  <section class="screen" id="wheelScreen">
+    <div class="wheel-head">
+      <h1 class="wheel-title">幸运大转盘</h1>
+      <div class="balance-row">
+        <span class="balance-badge">🎟️ 机会 <b id="wheelChance">0</b></span>
+        <span class="balance-badge">🪙 金豆 <b id="wheelBeans">0</b></span>
+        <button class="balance-badge btn-music" id="btnMusic">🎵 音乐</button>
+      </div>
+    </div>
+    <div id="wheelWrap">
+      <div id="pointer"></div>
+      <canvas id="wheel" width="640" height="640"></canvas>
+      <button id="wheelCenter">抽奖</button>
+    </div>
+    <div class="wheel-actions">
+      <button class="btn" id="btnSpin">🎯 抽奖 <span class="cost">消耗 1 次机会</span></button>
+      <div class="sub-actions">
+        <button class="btn small orange" id="btnWatchAd">看广告 +1 次</button>
+        <button class="btn small blue" id="btnShop">🛒 金豆商城</button>
+        <button class="btn small" id="btnBackHome2">返回</button>
+      </div>
+    </div>
+    <p class="wheel-foot">中奖概率：金豆+10 32% · 金豆+25 20% · 金榜题名红绳 14% · 金珠手串 12% · 紫金砂手串 10% · 菩提莲手串 8% · 小熊挂链 4%（看满 3 次广告解锁）</p>
+  </section>
+
+  <section class="screen" id="prizesScreen">
+    <h1 class="small">我的奖品</h1>
+    <div class="bean-banner">🪙 金豆 <b id="prizeBeans">0</b></div>
+    <p class="prize-progress-tip">累计看广告进度（满 3 次解锁小熊挂链）</p>
+    <div class="progress-dots" id="adDots">
+      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+    </div>
+    <div class="prize-list" id="prizeList"></div>
+    <button class="btn small" id="btnBackHome3">返回</button>
+  </section>
+
+  <div id="modal"><div class="modal-box" id="modalBox"></div></div>
+
+  <div id="adOverlay">
+    <p class="ad-text">广告播放中</p>
+    <div id="adCountdown">5</div>
+    <p class="ad-text">看完即可获得 1 次抽奖机会</p>
+    <div class="ad-bar"><i id="adBar"></i></div>
+  </div>
+
+  <section class="screen" id="login" data-scroll>
+    <div class="login-card">
+      <div class="login-logo">🌾</div>
+      <h2 class="login-title">村庄连连看 · 转盘抽奖</h2>
+      <p class="login-sub">微信一键登录，金豆与奖品云端同步</p>
+      <button class="btn-wx" id="btnWxLogin"><span class="wx-mark">微</span>微信一键登录</button>
+      <div class="login-status" id="loginStatus"></div>
+      <label class="agree" for="agreeBox">
+        <input type="checkbox" id="agreeBox" />
+        <span>我已阅读并同意<a href="#" id="linkTerms">《用户协议》</a>与<a href="#" id="linkPrivacy">《隐私政策》</a></span>
+      </label>
+      <div class="login-other">
+        <button class="link-btn" id="btnOther">其他登录方式</button>
+        <div class="other-panel" id="otherPanel">
+          <input class="login-input" id="authUser" placeholder="手机号 / 用户名" autocomplete="username" />
+          <input class="login-input" id="authPwd" type="password" placeholder="密码（至少 6 位）" autocomplete="current-password" />
+          <div class="admin-actions">
+            <button class="btn small orange" id="btnAuthLogin">登录</button>
+            <button class="btn small" id="btnAuthRegister">注册并登录</button>
+          </div>
+        </div>
+        <button class="link-btn" id="btnSkip">先逛逛，稍后登录</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="adminLogin" data-scroll>
+    <div class="admin-wrap">
+      <div class="admin-head">
+        <h2 class="admin-title">⚙️ 运营后台登录</h2>
+      </div>
+      <label class="adm-label" for="admAcct">账号</label>
+      <input class="adm-input" id="admAcct" type="tel" inputmode="numeric" placeholder="请输入管理员账号" autocomplete="username" />
+      <label class="adm-label" for="admPwd">密码</label>
+      <input class="adm-input" id="admPwd" type="password" placeholder="请输入密码" autocomplete="current-password" />
+      <div class="adm-err" id="admErr"></div>
+      <div class="admin-actions">
+        <button class="btn small orange" id="btnAdmLogin">登录</button>
+        <button class="btn small" id="btnAdmBack">返回主页</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="admin" data-scroll>
+    <div class="admin-wrap">
+      <div class="admin-head">
+        <h2 class="admin-title">⚙️ 运营后台</h2>
+        <button class="btn small" id="btnAdminExit">退出</button>
+      </div>
+      <div class="admin-cards" id="adminCards"></div>
+      <h3 class="admin-sub">全服数据（数据库）</h3>
+      <div class="admin-list" id="adminServer"></div>
+      <h3 class="admin-sub">签到记录</h3>
+      <div class="admin-list" id="adminSignLog"></div>
+      <h3 class="admin-sub">奖品发放</h3>
+      <div class="admin-list" id="adminPrizes"></div>
+      <h3 class="admin-sub">中奖订单（收货信息）</h3>
+      <div class="admin-orders-filter">
+        <input id="ordKeyword" placeholder="搜索姓名 / 电话 / 地址" />
+        <select id="ordPrize"></select>
+        <input id="ordFrom" type="date" />
+        <input id="ordTo" type="date" />
+        <button class="btn small blue" id="btnOrdFilter">筛选</button>
+        <button class="btn small" id="btnOrdExport">导出 CSV</button>
+      </div>
+      <div class="admin-list" id="adminOrders"></div>
+      <h3 class="admin-sub">游戏配置</h3>
+      <div class="admin-list" id="adminCfg"></div>
+      <div class="admin-actions">
+        <button class="btn small orange" id="btnCfgSave">保存配置</button>
+        <button class="btn small blue" id="btnExport">导出数据</button>
+        <button class="btn small" id="btnReset">重置存档</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="mini-modal" id="agreeTip">
+    <div class="mini-card">
+      <h3>请先同意协议</h3>
+      <p>需勾选并同意《用户协议》与《隐私政策》后，才能继续使用微信登录。</p>
+      <div class="modal-btns">
+        <button class="btn small orange" id="btnAgreeGo">同意并登录</button>
+        <button class="btn small" id="btnAgreeOk">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mini-modal" id="shipModal">
+    <div class="mini-card">
+      <h3>填写收货信息</h3>
+      <p class="ship-tip" id="shipPrize"></p>
+      <div class="ship-row">
+        <div class="ship-field">
+          <label for="shipName">收件人</label>
+          <input class="ship-input" id="shipName" maxlength="30" placeholder="真实姓名" />
+        </div>
+        <div class="ship-field">
+          <label for="shipPhone">手机号</label>
+          <input class="ship-input" id="shipPhone" inputmode="numeric" maxlength="11" placeholder="11 位手机号" />
+        </div>
+      </div>
+      <div class="ship-row">
+        <div class="ship-field">
+          <label for="shipProv">省</label>
+          <input class="ship-input" id="shipProv" maxlength="20" placeholder="如 广东省" />
+        </div>
+        <div class="ship-field">
+          <label for="shipCity">市</label>
+          <input class="ship-input" id="shipCity" maxlength="20" placeholder="如 深圳市" />
+        </div>
+        <div class="ship-field">
+          <label for="shipDist">区 / 县</label>
+          <input class="ship-input" id="shipDist" maxlength="20" placeholder="如 南山区" />
+        </div>
+      </div>
+      <div class="ship-field">
+        <label for="shipAddr">详细地址</label>
+        <input class="ship-input" id="shipAddr" maxlength="150" placeholder="街道、门牌号、楼层房间" />
+      </div>
+      <div class="ship-err" id="shipErr"></div>
+      <div class="modal-btns">
+        <button class="btn small orange" id="btnShipSubmit">提交收货信息</button>
+        <button class="btn small" id="btnShipCancel">稍后填写</button>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="confetti"></canvas>
+
+  <div id="toast"></div>
+</div>
+
+<script>
+/* ============================================================
+奖品图（转盘与奖品列表共用）
+============================================================ */
+const IMG = {
+  bear: 'https://miaoda-conversation-file.cdn.bcebos.com/user-fs1v864qi134/app-ftthms04qhoh/20261116/screenshot_20261115_122442_com.alibaba.wireless_hmos.jpg',
+  gold: 'https://miaoda-conversation-file.cdn.bcebos.com/user-fs1v864qi134/app-ftthms04qhoh/20261116/screenshot_20261115_122016_com.alibaba.wireless_hmos.jpg',
+  luck: 'https://miaoda-conversation-file.cdn.bcebos.com/user-fs1v864qi134/app-ftthms04qhoh/20261116/screenshot_20261115_121904_com.alibaba.wireless_hmos.jpg',
+  sand: 'https://miaoda-conversation-file.cdn.bcebos.com/user-fs1v864qi134/app-ftthms04qhoh/20261116/screenshot_20261115_121808_com.alibaba.wireless_hmos.jpg',
+  lotus: 'https://miaoda-conversation-file.cdn.bcebos.com/user-fs1v864qi134/app-ftthms04qhoh/20261116/screenshot_20261115_121742_com.alibaba.wireless_hmos.jpg'
+};
+
+/* ============================================================
+可调参数
+============================================================ */
+const CONFIG = {
+  ROWS: 8,
+  COLS: 8,
+  ICON_COUNT: 8,
+  TIME_LIMIT: 300,
+  AD_PLACEMENT_ID: '5870225444210928',
+  AD_FALLBACK: false,
+  AD_COOLDOWN: 60,
+  AD_DURATION: 5,
+  AD_FOR_DOLL: 3,
+  AD_TIMEOUT: 90,
+  HINT_COST: 1,
+  SHUFFLE_COST: 1,
+  WIN_CHANCE: 1,
+  WHEEL: [
+    { key: 'bean10', label: '金豆 +10', short: '+10 金豆', icon: '🪙', weight: 32, type: 'bean', bean: 10 },
+    { key: 'luck', label: '金榜题名红绳', short: '金榜题名', weight: 14, type: 'item', prize: 'luck', img: IMG.luck },
+    { key: 'bean25', label: '金豆 +25', short: '+25 金豆', icon: '🪙', weight: 20, type: 'bean', bean: 25 },
+    { key: 'bear', label: '毛绒小熊挂链', short: '小熊挂链', weight: 4, type: 'item', prize: 'bear', needAd: true, img: IMG.bear },
+    { key: 'gold', label: '金珠手串', short: '金珠手串', weight: 12, type: 'item', prize: 'gold', img: IMG.gold },
+    { key: 'sand', label: '紫金砂手串', short: '紫金砂', weight: 10, type: 'item', prize: 'sand', img: IMG.sand },
+    { key: 'lotus', label: '菩提莲手串', short: '菩提莲', weight: 8, type: 'item', prize: 'lotus', img: IMG.lotus }
+  ]
+};
+
+const ICON_SET = ['🍐', '🍇', '🍯', '🥛', '🐔', '🧑‍🌾', '🎃', '🌾'];
+const TILE_ICONS = ['pear', 'grape', 'honey', 'milk', 'hen', 'scarecrow', 'pumpkin', 'wheat'];
+const TILE_ICON_BASE = 'assets/icons/';
+/* 导出离线 HTML 时会把本表填充为 base64 资源；正常运行时为 null，走相对路径 */
+const EXPORT_ASSETS = {};
+function tileIconSrc(key) {
+  return EXPORT_ASSETS[TILE_ICON_BASE + key + '.png'] || (TILE_ICON_BASE + key + '.png');
+}
+
+const PRIZE_ORDER = ['luck', 'bear', 'gold', 'sand', 'lotus'];
+const PRIZE_META = {
+  bear: { name: '毛绒小熊挂链', img: IMG.bear, needAd: true },
+  gold: { name: '金珠手串', img: IMG.gold },
+  luck: { name: '金榜题名红绳', img: IMG.luck },
+  sand: { name: '紫金砂手串', img: IMG.sand },
+  lotus: { name: '菩提莲手串', img: IMG.lotus }
+};
+
+const SAVE_KEY = 'village-link-save-v1';
+const DEVICE_KEY = 'village-link-device-v1';
+const API_URL = 'https://backend.miaoda.online/projects/supabase380911212357005312/functions/v1/game-sync';
+const API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoyMTEwMjQzNTEwLCJpc3MiOiJzdXBhYmFzZSIsInJvbGUiOiJhbm9uIiwic3ViIjoiYW5vbiJ9.oI0UQRoxO8z1Zn3EAp09bWG2ZTbZw08u1bafHzuMSd0';
+const CW = CONFIG.COLS + 2;   // 含外圈空格，用于绕行连线
+const CH = CONFIG.ROWS + 2;
+const PAD = 28;               // 连线画布向外扩展的像素
+
+const $ = (s) => document.querySelector(s);
+const board = $('#board');
+const boardWrap = $('#boardWrap');
+const linesEl = $('#lines');
+const linesCtx = linesEl.getContext('2d');
+let linesDpr = 1;
+
+/* ============================================================
+状态
+============================================================ */
+const state = {
+  chances: 1,
+  beans: 0,
+  prizes: {},
+  adCount: 0,
+  adReadyAt: 0,
+  sfx: true,
+  musicOff: false,
+  props: { shuffle: 0 },
+  sign: { last: '', streak: 0, total: 0, log: [] },
+  stats: { spins: 0, beans: 0 },
+  cfg: null,
+  savedAt: 0,
+  admin: false,
+  grid: new Array(CW * CH).fill(null),
+  tileEls: new Map(),
+  remaining: 0,
+  timeLeft: CONFIG.TIME_LIMIT,
+  timerId: 0,
+  selected: null,
+  busy: false,
+  playing: false,
+  spinning: false,
+  adTimer: 0
+};
+
+const fx = [];
+const sparks = [];
+let wheelRot = 0;
+
+const idx = (r, c) => r * CW + c;
+const fmtTime = (s) => {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+};
+
+/* ============================================================
+存档
+============================================================ */
+function loadSave() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) {
+      state.chances = 1;
+      save();
+      return true;
+    }
+    const d = JSON.parse(raw);
+    state.chances = Math.max(0, d.chances | 0);
+    state.prizes = d.prizes && typeof d.prizes === 'object' ? d.prizes : {};
+    state.adCount = Math.max(0, d.adCount | 0);
+    state.adReadyAt = d.adReadyAt | 0;
+    state.sfx = d.sfx !== false;
+    state.beans = Math.max(0, d.beans | 0);
+    state.musicOff = d.musicOff === true;
+    state.props = { shuffle: Math.max(0, (d.props && d.props.shuffle) | 0) };
+    const sg = d.sign && typeof d.sign === 'object' ? d.sign : {};
+    state.sign = {
+      last: typeof sg.last === 'string' ? sg.last : '',
+      streak: Math.max(0, sg.streak | 0),
+      total: Math.max(0, sg.total | 0),
+      log: Array.isArray(sg.log) ? sg.log.slice(-60) : []
+    };
+    const st = d.stats && typeof d.stats === 'object' ? d.stats : {};
+    state.stats = { spins: Math.max(0, st.spins | 0), beans: Math.max(0, st.beans | 0) };
+    state.cfg = d.cfg && typeof d.cfg === 'object' ? d.cfg : null;
+    state.savedAt = Math.max(0, d.savedAt | 0);
+  } catch (e) {
+    state.chances = 1;
+  }
+  return false;
+}
+
+function writeCache() {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      chances: state.chances,
+      prizes: state.prizes,
+      adCount: state.adCount,
+      adReadyAt: state.adReadyAt,
+      sfx: state.sfx,
+      beans: state.beans,
+      musicOff: state.musicOff,
+      props: state.props,
+      sign: state.sign,
+      stats: state.stats,
+      cfg: state.cfg,
+      savedAt: state.savedAt
+    }));
+  } catch (e) { /* 隐私模式下忽略 */ }
+}
+
+function save() {
+  state.savedAt = Date.now();
+  writeCache();
+  scheduleSync();
+}
+
+/* ============================================================
+云端存储（Supabase Edge Function）
+============================================================ */
+const CLOUD = { online: null, timer: 0, pushing: false, pending: [] };
+const adminCreds = { account: '', password: '' };
+
+function deviceId() {
+  let id = '';
+  try { id = localStorage.getItem(DEVICE_KEY) || ''; } catch (e) { id = ''; }
+  if (!id) {
+    id = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    try { localStorage.setItem(DEVICE_KEY, id); } catch (e) { /* 忽略 */ }
+  }
+  return id;
+}
+
+async function api(action, payload) {
+  const body = Object.assign({ action: action, deviceId: deviceId() }, payload || {});
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: API_KEY,
+      Authorization: 'Bearer ' + API_KEY
+    },
+    body: JSON.stringify(body)
+  });
+  let data = null;
+  try { data = await res.json(); } catch (e) { data = null; }
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.error) || 'http_' + res.status);
+  }
+  return data;
+}
+
+function cloudSnapshot() {
+  return {
+    beans: state.beans,
+    chances: state.chances,
+    shuffle: state.props.shuffle,
+    prizes: state.prizes,
+    adCount: state.adCount,
+    sign: state.sign,
+    stats: state.stats
+  };
+}
+
+function pushEvent(kind, payload) {
+  CLOUD.pending.push({ kind: kind, payload: payload || {} });
+  if (CLOUD.pending.length > 40) CLOUD.pending = CLOUD.pending.slice(-40);
+  scheduleSync();
+}
+
+function setCloudState(ok) {
+  CLOUD.online = ok;
+  const el = $('#cloudState');
+  if (!el) return;
+  el.textContent = ok ? '☁️ 数据已云端同步' : '📴 离线模式 · 联网后自动补传';
+  el.classList.toggle('off', !ok);
+}
+
+function scheduleSync() {
+  clearTimeout(CLOUD.timer);
+  CLOUD.timer = setTimeout(function () { syncPush(); }, 700);
+}
+
+async function syncPush() {
+  if (CLOUD.pushing) { scheduleSync(); return; }
+  CLOUD.pushing = true;
+  const events = CLOUD.pending.slice(0, 20);
+  try {
+    const data = await api('save', {
+      save: cloudSnapshot(),
+      savedAt: state.savedAt || Date.now(),
+      events: events
+    });
+    CLOUD.pending = CLOUD.pending.filter(function (e) { return events.indexOf(e) === -1; });
+    if (data.stale && data.player) {
+      const ts = Date.parse(String(data.player.updated_at)) || 0;
+      state.savedAt = ts + 1000;
+    }
+    setCloudState(true);
+  } catch (e) {
+    setCloudState(false);
+  } finally {
+    CLOUD.pushing = false;
+  }
+}
+
+function applyServerPlayer(p) {
+  if (!p) return;
+  state.beans = Math.max(0, p.beans | 0);
+  state.chances = Math.max(0, p.chances | 0);
+  state.props = { shuffle: Math.max(0, p.shuffle | 0) };
+  state.prizes = p.prizes && typeof p.prizes === 'object' ? p.prizes : {};
+  state.adCount = Math.max(0, p.ad_count | 0);
+  const sg = p.sign && typeof p.sign === 'object' ? p.sign : {};
+  state.sign = {
+    last: typeof sg.last === 'string' ? sg.last : '',
+    streak: Math.max(0, sg.streak | 0),
+    total: Math.max(0, sg.total | 0),
+    log: Array.isArray(sg.log) ? sg.log.slice(-60) : []
+  };
+  const st = p.stats && typeof p.stats === 'object' ? p.stats : {};
+  state.stats = { spins: Math.max(0, st.spins | 0), beans: Math.max(0, st.beans | 0) };
+  state.savedAt = Date.parse(String(p.updated_at)) || Date.now();
+  writeCache();
+  updateHUD();
+  updateWheelUI();
+  refreshPrizes();
+}
+
+function applyServerConfig(c) {
+  if (!c) return;
+  const weights = Array.isArray(c.weights) && c.weights.length === CONFIG.WHEEL.length
+    ? c.weights.map(function (v) { return Math.max(0, Number(v) || 0); })
+    : null;
+  const costs = Array.isArray(c.costs) && c.costs.length === SHOP_ITEMS.length
+    ? c.costs.map(function (v) { return Math.max(0, Number(v) || 0); })
+    : null;
+  state.cfg = {
+    winChance: typeof c.winChance === 'number' ? c.winChance : cfgWin(),
+    weights: weights || CONFIG.WHEEL.map(function (w) { return w.weight; }),
+    costs: costs || SHOP_ITEMS.map(function (it) { return it.cost; })
+  };
+  writeCache();
+}
+
+async function syncPull() {
+  try {
+    const data = await api('load');
+    applyServerConfig(data.config);
+    if (data.player) {
+      const ts = Date.parse(String(data.player.updated_at)) || 0;
+      if (!state.savedAt || ts >= state.savedAt - 5000) {
+        applyServerPlayer(data.player);
+      } else {
+        state.savedAt = ts + 1000;
+        scheduleSync();
+      }
+    } else {
+      if (!state.savedAt) state.savedAt = Date.now();
+      scheduleSync();
+    }
+    updateHUD();
+    updateWheelUI();
+    setCloudState(true);
+  } catch (e) {
+    setCloudState(false);
+  }
+}
+
+/* ============================================================
+界面工具
+============================================================ */
+const SCREENS = ['login', 'home', 'game', 'wheelScreen', 'prizesScreen', 'adminLogin', 'admin'];
+
+function show(id) {
+  SCREENS.forEach((s) => {
+    const el = document.getElementById(s);
+    if (el) el.classList.toggle('active', s === id);
+  });
+  if (id === 'game') setTimeout(setupLines, 30);
+  if (id === 'wheelScreen') {
+    updateWheelUI();
+    Music.start();
+  } else {
+    Music.stop();
+  }
+}
+
+let toastTimer = 0;
+/* ============================================================
+导出当前页面为可离线打开的 HTML（UTF-8、资源内联）
+============================================================ */
+function defaultExportName() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return 'village-link-' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + '.html';
+}
+
+function sanitizeExportName(raw) {
+  let name = String(raw || '').trim().replace(/[\\/:*?"<>|]/g, '_');
+  if (!name) name = 'village-link.html';
+  if (!/\.html?$/i.test(name)) name += '.html';
+  return name;
+}
+
+function readAsDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result));
+    fr.onerror = () => reject(fr.error || new Error('读取失败'));
+    fr.readAsDataURL(blob);
+  });
+}
+
+async function fetchAsDataUrl(url) {
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return readAsDataUrl(await res.blob());
+}
+
+/* 抓取页面源码 -> 内联图标与实拍图 -> 补 UTF-8 声明 */
+async function buildOfflineHtml() {
+  let html = '';
+  try {
+    const res = await fetch(location.href, { cache: 'no-store' });
+    if (res.ok) html = await res.text();
+  } catch (e) {}
+  if (!html) html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+  if (!/^\s*<!doctype/i.test(html)) html = '<!DOCTYPE html>\n' + html;
+
+  const assets = {};
+  for (const key of TILE_ICONS) {
+    const path = TILE_ICON_BASE + key + '.png';
+    try { assets[path] = await fetchAsDataUrl(path); } catch (e) {}
+  }
+  const assetsLiteral = 'const EXPORT_ASSETS = ' + JSON.stringify(assets) + ';';
+  html = html.replace('const EXPORT_ASSETS = {};', () => assetsLiteral);
+
+  const remote = Array.from(new Set(html.match(/https:\/\/[^'"\s<>]+\.(?:png|jpe?g|webp|svg)/gi) || []));
+  for (const url of remote) {
+    try {
+      const data = await fetchAsDataUrl(url);
+      html = html.split(url).join(data);
+    } catch (e) {}
+  }
+
+  if (!/<meta[^>]+charset=["']?utf-8/i.test(html)) {
+    html = html.replace(/<head([^>]*)>/i, '<head$1>\n<meta charset="utf-8">');
+  }
+  return html;
+}
+
+function saveHtmlFile(name, html) {
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, 4000);
+}
+
+function openExportModal() {
+  const box = $('#modalBox');
+  box.className = 'modal-box';
+  box.innerHTML = '';
+  const icon = document.createElement('div');
+  icon.className = 'modal-icon';
+  icon.textContent = '💾';
+  box.appendChild(icon);
+  const h = document.createElement('h2');
+  h.textContent = '导出网页文件';
+  box.appendChild(h);
+  const tip = document.createElement('div');
+  tip.className = 'shop-tip';
+  tip.textContent = '导出为 UTF-8 编码的 HTML，图标与样式一并打包，离线双击即可打开。';
+  box.appendChild(tip);
+
+  const field = document.createElement('div');
+  field.className = 'ship-field';
+  const label = document.createElement('label');
+  label.textContent = '文件名（自动补 .html）';
+  const input = document.createElement('input');
+  input.className = 'ship-input';
+  input.type = 'text';
+  input.maxLength = 60;
+  input.value = defaultExportName();
+  field.appendChild(label);
+  field.appendChild(input);
+  box.appendChild(field);
+
+  const status = document.createElement('p');
+  status.textContent = '';
+  box.appendChild(status);
+
+  const row = document.createElement('div');
+  row.className = 'modal-btns';
+  const cancel = document.createElement('button');
+  cancel.className = 'btn small';
+  cancel.textContent = '取消';
+  cancel.onclick = closeModal;
+  const ok = document.createElement('button');
+  ok.className = 'btn small blue';
+  ok.textContent = '下载';
+  ok.onclick = async () => {
+    ok.disabled = true;
+    cancel.disabled = true;
+    ok.textContent = '打包中…';
+    status.textContent = '正在内联图标与实物图，请稍候…';
+    try {
+      const html = await buildOfflineHtml();
+      const name = sanitizeExportName(input.value);
+      saveHtmlFile(name, html);
+      closeModal();
+      toast('已导出 ' + name);
+    } catch (e) {
+      status.textContent = '导出失败：' + ((e && e.message) || '请稍后重试');
+      ok.disabled = false;
+      cancel.disabled = false;
+      ok.textContent = '重试';
+    }
+  };
+  row.appendChild(cancel);
+  row.appendChild(ok);
+  box.appendChild(row);
+  $('#modal').classList.add('show');
+}
+
+function toast(msg, type) {
+  const el = $('#toast');
+  el.textContent = '';
+  const ic = document.createElement('span');
+  ic.className = 'ti';
+  ic.textContent = '✅';
+  const tx = document.createElement('span');
+  tx.textContent = msg;
+  el.appendChild(ic);
+  el.appendChild(tx);
+  el.classList.remove('show', 'ok');
+  void el.offsetWidth;
+  if (type === 'ok') el.classList.add('ok');
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), type === 'ok' ? 1900 : 1600);
+}
+
+function closeModal() {
+  $('#modal').classList.remove('show');
+}
+
+function showModal(opts) {
+  const box = $('#modalBox');
+  box.className = 'modal-box';
+  box.innerHTML = '';
+  if (opts.icon) {
+    const d = document.createElement('div');
+    d.className = 'modal-icon';
+    d.textContent = opts.icon;
+    box.appendChild(d);
+  }
+  if (opts.title) {
+    const h = document.createElement('h2');
+    h.textContent = opts.title;
+    box.appendChild(h);
+  }
+  if (opts.text) {
+    const p = document.createElement('p');
+    p.innerHTML = opts.text;
+    box.appendChild(p);
+  }
+  const row = document.createElement('div');
+  row.className = 'modal-btns';
+  const btns = opts.buttons && opts.buttons.length ? opts.buttons : [{ label: '知道了' }];
+  btns.forEach((b) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn ' + (b.cls || '');
+    btn.textContent = b.label;
+    btn.onclick = () => {
+      closeModal();
+      if (typeof b.onClick === 'function') b.onClick();
+    };
+    row.appendChild(btn);
+  });
+  box.appendChild(row);
+  $('#modal').classList.add('show');
+}
+
+function updateHUD() {
+  $('#hudLeft').textContent = state.remaining;
+  $('#hudTime').textContent = fmtTime(Math.max(0, state.timeLeft));
+  $('#hudChance').textContent = state.chances;
+  $('#homeChance').textContent = state.chances;
+  $('#wheelChance').textContent = state.chances;
+  const hb = $('#homeBeans');
+  if (hb) hb.textContent = state.beans;
+  const wb = $('#wheelBeans');
+  if (wb) wb.textContent = state.beans;
+  const pb = $('#prizeBeans');
+  if (pb) pb.textContent = state.beans;
+  const dot = $('#signDot');
+  if (dot) dot.style.display = signInfo().signedToday ? 'none' : 'block';
+  const hs = $('#hudShuffle');
+  if (hs) hs.textContent = state.props.shuffle;
+  const bs = $('#btnShuffle');
+  if (bs) bs.textContent = state.props.shuffle > 0 ? '重排 ×' + state.props.shuffle : '重排 -1';
+  const sfx = $('#btnSfx');
+  if (sfx) sfx.textContent = state.sfx ? '🔊' : '🔇';
+  updateMusicBtn();
+}
+
+/* ============================================================
+音效（Web Audio，轻量蜂鸣）
+============================================================ */
+let actx = null;
+let noiseBuf = null;
+
+function ensureCtx() {
+  try {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  } catch (e) {
+    return null;
+  }
+}
+
+function toneAt(freq, when, dur, type, gain) {
+  if (!state.sfx) return;
+  const ctx = ensureCtx();
+  if (!ctx) return;
+  const t = when || ctx.currentTime;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = type || 'sine';
+  o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(gain || 0.06, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(0.03, dur));
+  o.connect(g);
+  g.connect(ctx.destination);
+  o.start(t);
+  o.stop(t + dur + 0.05);
+}
+
+function hatAt(when, gain) {
+  if (!state.sfx) return;
+  const ctx = ensureCtx();
+  if (!ctx) return;
+  if (!noiseBuf) {
+    const len = Math.floor(ctx.sampleRate * 0.08);
+    noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  }
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuf;
+  const hp = ctx.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = 6000;
+  const g = ctx.createGain();
+  g.gain.value = gain || 0.02;
+  src.connect(hp);
+  hp.connect(g);
+  g.connect(ctx.destination);
+  src.start(when);
+}
+
+function tone(freq, dur, type, gain) {
+  const ctx = ensureCtx();
+  if (!ctx) return;
+  toneAt(freq, ctx.currentTime, dur, type, gain);
+}
+
+/* ============================================================
+转盘背景音乐（Web Audio 合成，无需音频文件）
+============================================================ */
+const MELODY = [523.25, 659.25, 783.99, 659.25, 783.99, 880, 1046.5, 880, 698.46, 783.99, 880, 783.99, 659.25, 587.33, 523.25, 587.33];
+const BASS_LINE = [130.81, 174.61, 146.83, 130.81];
+
+const Music = {
+  running: false,
+  timer: 0,
+  step: 0,
+  next: 0,
+  ctx: null,
+  start() {
+    if (this.running || state.musicOff) return;
+    const ctx = ensureCtx();
+    if (!ctx) return;
+    this.ctx = ctx;
+    this.running = true;
+    this.step = 0;
+    this.next = ctx.currentTime + 0.1;
+    this.timer = setInterval(() => this.schedule(), 60);
+    this.schedule();
+  },
+  stop() {
+    this.running = false;
+    if (this.timer) clearInterval(this.timer);
+    this.timer = 0;
+  },
+  schedule() {
+    const ctx = this.ctx;
+    if (!ctx || !this.running) return;
+    while (this.next < ctx.currentTime + 0.4) {
+      const s = this.step;
+      const m = MELODY[s % MELODY.length];
+      toneAt(m, this.next, 0.24, 'triangle', 0.05);
+      toneAt(m * 2, this.next, 0.1, 'sine', 0.015);
+      if (s % 4 === 0) toneAt(BASS_LINE[(s / 4) % BASS_LINE.length], this.next, 0.42, 'sine', 0.055);
+      if (s % 2 === 1) hatAt(this.next, 0.018);
+      this.step += 1;
+      this.next += 0.27;
+    }
+  }
+};
+
+const sfxMatch = () => { tone(660, 0.12, 'triangle', 0.08); setTimeout(() => tone(880, 0.1, 'triangle', 0.06), 70); };
+const sfxBad = () => tone(180, 0.12, 'square', 0.04);
+const sfxWin = () => { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => tone(f, 0.18, 'triangle', 0.07), i * 110)); };
+const sfxCoin = () => { [1046, 1318, 1568].forEach((f, i) => setTimeout(() => tone(f, 0.12, 'square', 0.04), i * 80)); };
+
+function sfxSpin() {
+  const ctx = ensureCtx();
+  if (!ctx || !state.sfx) return;
+  const t0 = ctx.currentTime + 0.02;
+  let t = 0;
+  let gap = 0.055;
+  for (let i = 0; i < 34; i++) {
+    toneAt(1500 - i * 14, t0 + t, 0.026, 'square', 0.016);
+    t += gap;
+    gap = Math.min(0.26, gap * 1.1);
+    if (t > 4.2) break;
+  }
+}
+
+/* ============================================================
+背景：Canvas 绘制卡通村庄（无外部图片）
+============================================================ */
+function drawVillage(g) {
+  const W = 900, H = 1600;
+  const grad = g.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#8fd06a');
+  grad.addColorStop(0.5, '#7cc457');
+  grad.addColorStop(1, '#6ab34a');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, W, H);
+
+  for (let i = 0; i < 520; i++) {
+    const r = (90 + Math.random() * 40) | 0;
+    const gg = (160 + Math.random() * 50) | 0;
+    const b = (70 + Math.random() * 40) | 0;
+    g.fillStyle = 'rgba(' + r + ',' + gg + ',' + b + ',.35)';
+    g.beginPath();
+    g.ellipse(Math.random() * W, Math.random() * H, 6 + Math.random() * 16, 3 + Math.random() * 8, Math.random() * 3, 0, 7);
+    g.fill();
+  }
+
+  // 河流
+  g.beginPath();
+  g.moveTo(-40, 260);
+  g.bezierCurveTo(200, 380, 120, 620, 380, 720);
+  g.bezierCurveTo(640, 820, 560, 1080, 820, 1180);
+  g.bezierCurveTo(960, 1230, 940, 1400, 960, 1600);
+  g.lineTo(1000, 1600);
+  g.bezierCurveTo(980, 1400, 1000, 1230, 860, 1180);
+  g.bezierCurveTo(600, 1080, 680, 820, 420, 720);
+  g.bezierCurveTo(160, 620, 240, 380, 0, 260);
+  g.closePath();
+  g.fillStyle = '#5fb8e8';
+  g.fill();
+  g.strokeStyle = 'rgba(255,255,255,.55)';
+  g.lineWidth = 4;
+  g.stroke();
+
+  g.strokeStyle = 'rgba(255,255,255,.4)';
+  g.lineWidth = 2;
+  for (let i = 0; i < 14; i++) {
+    g.beginPath();
+    const x = 120 + Math.random() * 700, y = 300 + Math.random() * 1100;
+    g.moveTo(x, y);
+    g.quadraticCurveTo(x + 18, y - 6, x + 36, y);
+    g.stroke();
+  }
+
+  // 小路
+  g.beginPath();
+  g.moveTo(450, 1600);
+  g.bezierCurveTo(430, 1300, 520, 1000, 460, 760);
+  g.bezierCurveTo(420, 600, 470, 420, 450, 0);
+  g.lineWidth = 46;
+  g.strokeStyle = '#d9c08a';
+  g.lineCap = 'round';
+  g.stroke();
+  g.lineWidth = 38;
+  g.strokeStyle = '#e8d3a3';
+  g.stroke();
+
+  function house(x, y, s, rot) {
+    g.save();
+    g.translate(x, y);
+    g.rotate(rot);
+    g.scale(s, s);
+    g.fillStyle = 'rgba(0,0,0,.15)';
+    g.beginPath();
+    g.ellipse(0, 52, 52, 16, 0, 0, 7);
+    g.fill();
+    g.fillStyle = '#fdf3dd';
+    g.fillRect(-40, -10, 80, 60);
+    g.strokeStyle = '#c9b48a';
+    g.lineWidth = 2;
+    g.strokeRect(-40, -10, 80, 60);
+    g.beginPath();
+    g.moveTo(-52, -10);
+    g.lineTo(0, -58);
+    g.lineTo(52, -10);
+    g.closePath();
+    g.fillStyle = '#c94f3d';
+    g.fill();
+    g.strokeStyle = '#9c3628';
+    g.lineWidth = 2;
+    g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.25)';
+    g.lineWidth = 1.5;
+    for (let i = 1; i < 4; i++) {
+      g.beginPath();
+      g.moveTo(-52 + i * 13, -10 - i * 12);
+      g.lineTo(52 - i * 13, -10 - i * 12);
+      g.stroke();
+    }
+    g.fillStyle = '#8a5a2b';
+    g.fillRect(-10, 18, 20, 32);
+    g.fillStyle = '#ffd75e';
+    g.beginPath();
+    g.arc(5, 34, 2.4, 0, 7);
+    g.fill();
+    g.fillStyle = '#9fd8f5';
+    g.fillRect(-32, 4, 18, 18);
+    g.fillRect(14, 4, 18, 18);
+    g.strokeStyle = '#c9b48a';
+    g.lineWidth = 2;
+    g.strokeRect(-32, 4, 18, 18);
+    g.strokeRect(14, 4, 18, 18);
+    g.restore();
+  }
+  house(150, 180, 1.05, -0.06);
+  house(700, 240, 0.95, 0.08);
+  house(120, 560, 0.9, 0.05);
+  house(760, 640, 1.0, -0.05);
+  house(180, 980, 0.95, -0.04);
+  house(720, 1020, 1.05, 0.06);
+  house(300, 1420, 0.9, 0.03);
+  house(640, 1440, 0.95, -0.05);
+
+  function tree(x, y, s) {
+    g.save();
+    g.translate(x, y);
+    g.scale(s, s);
+    g.fillStyle = 'rgba(0,0,0,.14)';
+    g.beginPath();
+    g.ellipse(0, 34, 26, 9, 0, 0, 7);
+    g.fill();
+    g.fillStyle = '#8a5a2b';
+    g.fillRect(-6, 0, 12, 34);
+    g.fillStyle = '#3f8f3a';
+    g.beginPath();
+    g.arc(0, -14, 30, 0, 7);
+    g.fill();
+    g.fillStyle = '#4fa845';
+    g.beginPath();
+    g.arc(-14, -4, 22, 0, 7);
+    g.fill();
+    g.beginPath();
+    g.arc(16, -6, 20, 0, 7);
+    g.fill();
+    g.fillStyle = 'rgba(255,255,255,.18)';
+    g.beginPath();
+    g.arc(-8, -22, 12, 0, 7);
+    g.fill();
+    g.restore();
+  }
+  tree(60, 120, 1.1); tree(840, 120, 1.0); tree(60, 760, 1.0);
+  tree(840, 860, 1.1); tree(70, 1240, 1.05); tree(830, 1320, 1.0);
+  tree(250, 700, 0.85); tree(660, 780, 0.9);
+
+  // 中央上方水池场地
+  g.save();
+  g.fillStyle = 'rgba(255,255,255,.9)';
+  g.strokeStyle = '#b08a4a';
+  g.lineWidth = 6;
+  g.beginPath();
+  g.roundRect(300, 430, 300, 210, 18);
+  g.fill();
+  g.stroke();
+  g.fillStyle = '#6fc7ef';
+  g.beginPath();
+  g.roundRect(318, 448, 264, 174, 12);
+  g.fill();
+  g.strokeStyle = 'rgba(255,255,255,.6)';
+  g.lineWidth = 3;
+  for (let i = 0; i < 4; i++) {
+    g.beginPath();
+    g.moveTo(330, 480 + i * 38);
+    g.quadraticCurveTo(450, 470 + i * 38, 570, 480 + i * 38);
+    g.stroke();
+  }
+  // 浮岛小建筑
+  g.fillStyle = '#fdf3dd';
+  g.fillRect(390, 500, 46, 34);
+  g.fillStyle = '#c94f3d';
+  g.beginPath();
+  g.moveTo(384, 500);
+  g.lineTo(413, 474);
+  g.lineTo(442, 500);
+  g.closePath();
+  g.fill();
+  g.fillStyle = '#fdf3dd';
+  g.fillRect(470, 540, 40, 30);
+  g.fillStyle = '#c94f3d';
+  g.beginPath();
+  g.moveTo(464, 540);
+  g.lineTo(490, 516);
+  g.lineTo(516, 540);
+  g.closePath();
+  g.fill();
+  g.fillStyle = '#ffd75e';
+  g.beginPath();
+  g.arc(360, 560, 8, 0, 7);
+  g.fill();
+  g.fillStyle = '#8fd06a';
+  g.beginPath();
+  g.arc(540, 500, 10, 0, 7);
+  g.fill();
+  g.restore();
+
+  // 中央下方沙地广场
+  g.save();
+  g.fillStyle = '#e8d3a3';
+  g.strokeStyle = '#b08a4a';
+  g.lineWidth = 6;
+  g.beginPath();
+  g.roundRect(300, 700, 300, 210, 18);
+  g.fill();
+  g.stroke();
+  g.fillStyle = '#dcc48f';
+  g.beginPath();
+  g.roundRect(318, 718, 264, 174, 12);
+  g.fill();
+  g.restore();
+
+  // 祭坛
+  g.save();
+  g.fillStyle = '#c9b48a';
+  g.fillRect(400, 762, 100, 30);
+  g.fillStyle = '#b08a4a';
+  g.fillRect(410, 792, 80, 14);
+  g.fillStyle = '#fdf3dd';
+  g.fillRect(430, 726, 40, 36);
+  g.fillStyle = '#c94f3d';
+  g.beginPath();
+  g.moveTo(424, 726);
+  g.lineTo(450, 704);
+  g.lineTo(476, 726);
+  g.closePath();
+  g.fill();
+  g.fillStyle = '#ffd75e';
+  g.beginPath();
+  g.arc(450, 748, 6, 0, 7);
+  g.fill();
+  // 广场两侧火把
+  g.fillStyle = '#8a5a2b';
+  g.fillRect(340, 780, 8, 34);
+  g.fillRect(552, 780, 8, 34);
+  g.fillStyle = '#ff9f43';
+  g.beginPath();
+  g.arc(344, 776, 9, 0, 7);
+  g.arc(556, 776, 9, 0, 7);
+  g.fill();
+  g.restore();
+
+  // 田地
+  g.save();
+  g.strokeStyle = 'rgba(255,255,255,.35)';
+  g.lineWidth = 10;
+  for (let i = 0; i < 5; i++) {
+    g.beginPath();
+    g.moveTo(600, 1260 + i * 40);
+    g.lineTo(840, 1220 + i * 40);
+    g.stroke();
+  }
+  g.strokeStyle = 'rgba(255,255,255,.28)';
+  for (let i = 0; i < 4; i++) {
+    g.beginPath();
+    g.moveTo(40, 1300 + i * 42);
+    g.lineTo(250, 1350 + i * 42);
+    g.stroke();
+  }
+  g.restore();
+
+  // 小花点缀
+  const flowerColors = ['#ffd75e', '#ff8fa3', '#fff', '#c7a6ff'];
+  for (let i = 0; i < 90; i++) {
+    const x = Math.random() * W;
+    const y = Math.random() * H;
+    g.fillStyle = flowerColors[(Math.random() * flowerColors.length) | 0];
+    g.globalAlpha = 0.75;
+    g.beginPath();
+    g.arc(x, y, 2.2 + Math.random() * 1.6, 0, 7);
+    g.fill();
+  }
+  g.globalAlpha = 1;
+}
+
+function paintBG() {
+  const bgc = document.getElementById('bgc');
+  const w = bgc.clientWidth || window.innerWidth;
+  const h = bgc.clientHeight || window.innerHeight;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  bgc.width = Math.round(w * dpr);
+  bgc.height = Math.round(h * dpr);
+  const g = bgc.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const s = Math.max(w / 900, h / 1600);
+  g.save();
+  g.translate((w - 900 * s) / 2, (h - 1600 * s) / 2);
+  g.scale(s, s);
+  drawVillage(g);
+  g.restore();
+}
+
+/* ============================================================
+连线画布与动画主循环
+============================================================ */
+function setupLines() {
+  if (!boardWrap.getBoundingClientRect().width) return;
+  const rect = boardWrap.getBoundingClientRect();
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  linesDpr = dpr;
+  const w = rect.width + PAD * 2;
+  const h = rect.height + PAD * 2;
+  linesEl.style.left = -PAD + 'px';
+  linesEl.style.top = -PAD + 'px';
+  linesEl.style.width = w + 'px';
+  linesEl.style.height = h + 'px';
+  linesEl.width = Math.round(w * dpr);
+  linesEl.height = Math.round(h * dpr);
+}
+
+function cellCenter(r, c) {
+  const br = board.getBoundingClientRect();
+  const wr = boardWrap.getBoundingClientRect();
+  const gap = parseFloat(getComputedStyle(board).gap) || 3;
+  const cell = (br.width - gap * (CONFIG.COLS - 1)) / CONFIG.COLS;
+  const step = cell + gap;
+  return {
+    x: (br.left - wr.left) + (c - 1) * step + cell / 2 + PAD,
+    y: (br.top - wr.top) + (r - 1) * step + cell / 2 + PAD
+  };
+}
+
+const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+
+/* 折线路径度量：用于按弧长取点，实现沿路径行进的彗星拖尾 */
+function pathMetrics(pts) {
+  const segs = [];
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const x1 = pts[i - 1].x;
+    const y1 = pts[i - 1].y;
+    const x2 = pts[i].x;
+    const y2 = pts[i].y;
+    const len = Math.hypot(x2 - x1, y2 - y1);
+    segs.push({ x1, y1, x2, y2, len, start: total });
+    total += len;
+  }
+  return { segs, total };
+}
+
+function pointAt(m, d) {
+  if (!m.segs.length) return null;
+  const t = Math.max(0, Math.min(m.total, d));
+  for (let i = 0; i < m.segs.length; i++) {
+    const s = m.segs[i];
+    if (t <= s.start + s.len || i === m.segs.length - 1) {
+      const k = s.len ? (t - s.start) / s.len : 0;
+      return { x: s.x1 + (s.x2 - s.x1) * k, y: s.y1 + (s.y2 - s.y1) * k };
+    }
+  }
+  return null;
+}
+
+/* 沿路径 [from,to] 弧长区间描一段带发光的线 */
+function strokeRun(g, m, from, to, style, width, blur) {
+  if (to <= from) return;
+  g.save();
+  g.strokeStyle = style;
+  g.lineWidth = width;
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  if (blur) {
+    g.shadowBlur = blur;
+    g.shadowColor = style;
+  }
+  g.beginPath();
+  const step = Math.max(6, m.total / 90);
+  let started = false;
+  for (let d = from; d < to; d += step) {
+    const pt = pointAt(m, d);
+    if (!pt) continue;
+    if (!started) {
+      g.moveTo(pt.x, pt.y);
+      started = true;
+    } else {
+      g.lineTo(pt.x, pt.y);
+    }
+  }
+  const end = pointAt(m, to);
+  if (end) {
+    if (started) g.lineTo(end.x, end.y);
+    else g.moveTo(end.x, end.y);
+  }
+  g.stroke();
+  g.restore();
+}
+
+function drawFx(path) {
+  const pts = path.map((p) => cellCenter(p.r, p.c));
+  fx.push({ pts, m: pathMetrics(pts), t0: performance.now(), life: 680 });
+}
+
+/* 消除粒子爆散 */
+function spawnBurst(x, y, colors) {
+  const n = 18;
+  const t0 = performance.now();
+  for (let i = 0; i < n; i++) {
+    const ang = (Math.PI * 2 * i) / n + (Math.random() - 0.5) * 0.6;
+    const spd = 80 + Math.random() * 210;
+    sparks.push({
+      x: x + (Math.random() - 0.5) * 10,
+      y: y + (Math.random() - 0.5) * 10,
+      vx: Math.cos(ang) * spd,
+      vy: Math.sin(ang) * spd - 60,
+      size: 2 + Math.random() * 3.2,
+      color: colors[i % colors.length],
+      t0: t0,
+      life: 520 + Math.random() * 360
+    });
+  }
+}
+
+function renderLoop(now) {
+  const g = linesCtx;
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, linesEl.width, linesEl.height);
+  g.setTransform(linesDpr, 0, 0, linesDpr, 0, 0);
+  g.lineJoin = 'round';
+  g.lineCap = 'round';
+
+  for (let i = fx.length - 1; i >= 0; i--) {
+    const f = fx[i];
+    const p = (now - f.t0) / f.life;
+    if (p >= 1) {
+      fx.splice(i, 1);
+      continue;
+    }
+    const head = f.m.total * easeOutCubic(Math.min(1, p / 0.42));
+    const alpha = p < 0.5 ? 1 : Math.max(0, 1 - (p - 0.5) / 0.5);
+
+    /* 整段底光 */
+    strokeRun(g, f.m, 0, head, 'rgba(255,196,64,' + (0.3 * alpha) + ')', 15, 20);
+    strokeRun(g, f.m, 0, head, 'rgba(255,255,255,' + (0.85 * alpha) + ')', 4.5, 12);
+
+    /* 彗星拖尾：三层由粗到细，越靠近头部越亮 */
+    const tail = Math.min(head, 100);
+    if (head > 1) {
+      strokeRun(g, f.m, head - tail, head, 'rgba(255,214,90,' + (0.5 * alpha) + ')', 12, 18);
+      strokeRun(g, f.m, head - tail * 0.6, head, 'rgba(255,246,214,' + (0.88 * alpha) + ')', 6.5, 16);
+      strokeRun(g, f.m, head - tail * 0.25, head, 'rgba(255,255,255,' + alpha + ')', 3, 10);
+
+      const hp = pointAt(f.m, head);
+      if (hp) {
+        const rr = 12 + Math.sin(now / 90) * 2.5;
+        const gr = g.createRadialGradient(hp.x, hp.y, 0, hp.x, hp.y, rr * 1.9);
+        gr.addColorStop(0, 'rgba(255,255,255,' + (0.95 * alpha) + ')');
+        gr.addColorStop(0.35, 'rgba(255,226,138,' + (0.55 * alpha) + ')');
+        gr.addColorStop(1, 'rgba(255,214,90,0)');
+        g.fillStyle = gr;
+        g.beginPath();
+        g.arc(hp.x, hp.y, rr * 1.9, 0, 7);
+        g.fill();
+      }
+    }
+
+    /* 拐点闪点 */
+    f.pts.forEach((pt, k) => {
+      if (!k) return;
+      g.beginPath();
+      g.fillStyle = 'rgba(255,255,255,' + (0.45 * alpha) + ')';
+      g.arc(pt.x, pt.y, 3.2, 0, 7);
+      g.fill();
+    });
+  }
+
+  /* 消除粒子 */
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const s = sparks[i];
+    const age = now - s.t0;
+    if (age >= s.life) {
+      sparks.splice(i, 1);
+      continue;
+    }
+    const t = age / 1000;
+    const x = s.x + s.vx * t;
+    const y = s.y + s.vy * t + 0.5 * 560 * t * t;
+    const k = 1 - age / s.life;
+    g.globalAlpha = Math.max(0, k);
+    g.fillStyle = s.color;
+    g.shadowBlur = 8;
+    g.shadowColor = s.color;
+    g.beginPath();
+    g.arc(x, y, s.size * (0.35 + 0.65 * k), 0, 7);
+    g.fill();
+  }
+  g.globalAlpha = 1;
+  g.shadowBlur = 0;
+  g.shadowColor = 'transparent';
+
+  requestAnimationFrame(renderLoop);
+}
+
+/* ============================================================
+棋盘与消除规则（最多两个拐角）
+============================================================ */
+const isEmpty = (r, c) => state.grid[idx(r, c)] === null;
+
+function straightClear(a, b) {
+  if (a.r === b.r) {
+    const s = Math.min(a.c, b.c);
+    const e = Math.max(a.c, b.c);
+    for (let c = s + 1; c < e; c++) if (!isEmpty(a.r, c)) return false;
+    return true;
+  }
+  if (a.c === b.c) {
+    const s = Math.min(a.r, b.r);
+    const e = Math.max(a.r, b.r);
+    for (let r = s + 1; r < e; r++) if (!isEmpty(r, a.c)) return false;
+    return true;
+  }
+  return false;
+}
+
+function oneTurnCorner(a, b) {
+  if (a.r === b.r || a.c === b.c) return null;
+  const corners = [{ r: a.r, c: b.c }, { r: b.r, c: a.c }];
+  for (const p of corners) {
+    if (!isEmpty(p.r, p.c)) continue;
+    if (straightClear(a, p) && straightClear(p, b)) return p;
+  }
+  return null;
+}
+
+function findPath(a, b) {
+  if ((a.r === b.r || a.c === b.c) && straightClear(a, b)) return [a, b];
+  const c1 = oneTurnCorner(a, b);
+  if (c1) return [a, c1, b];
+
+  const candidates = [];
+  for (let c = 0; c < CW; c++) if (c !== a.c) candidates.push({ r: a.r, c });
+  for (let r = 0; r < CH; r++) if (r !== a.r) candidates.push({ r, c: a.c });
+
+  for (const p of candidates) {
+    if (!isEmpty(p.r, p.c)) continue;
+    if (!straightClear(a, p)) continue;
+    if ((p.r === b.r || p.c === b.c) && straightClear(p, b)) return [a, p, b];
+    const c2 = oneTurnCorner(p, b);
+    if (c2) return [a, p, c2, b];
+  }
+  return null;
+}
+
+function allTiles() {
+  const list = [];
+  for (let r = 1; r <= CONFIG.ROWS; r++) {
+    for (let c = 1; c <= CONFIG.COLS; c++) {
+      const t = state.grid[idx(r, c)];
+      if (t !== null) list.push({ r, c, t });
+    }
+  }
+  return list;
+}
+
+function findAnyPair() {
+  const list = allTiles();
+  for (let i = 0; i < list.length; i++) {
+    for (let j = i + 1; j < list.length; j++) {
+      if (list[i].t !== list[j].t) continue;
+      if (findPath(list[i], list[j])) return [list[i], list[j]];
+    }
+  }
+  return null;
+}
+
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = (Math.random() * (i + 1)) | 0;
+    const tmp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = tmp;
+  }
+  return arr;
+}
+
+/* ============================================================
+棋盘渲染
+============================================================ */
+function buildBoard() {
+  board.innerHTML = '';
+  board.style.gridTemplateColumns = 'repeat(' + CONFIG.COLS + ',1fr)';
+  state.tileEls.clear();
+  for (let r = 1; r <= CONFIG.ROWS; r++) {
+    for (let c = 1; c <= CONFIG.COLS; c++) {
+      const el = document.createElement('div');
+      el.className = 'tile';
+      el.dataset.r = String(r);
+      el.dataset.c = String(c);
+      board.appendChild(el);
+      state.tileEls.set(idx(r, c), el);
+    }
+  }
+}
+
+function syncTiles() {
+  for (let r = 1; r <= CONFIG.ROWS; r++) {
+    for (let c = 1; c <= CONFIG.COLS; c++) {
+      const i = idx(r, c);
+      const el = state.tileEls.get(i);
+      const t = state.grid[i];
+      if (!el) continue;
+      if (t === null) {
+        el.className = 'tile empty';
+        el.textContent = '';
+      } else {
+        el.className = 'tile';
+        el.dataset.type = String(t);
+        let img = el.querySelector('img');
+        if (!img) {
+          el.textContent = '';
+          img = document.createElement('img');
+          img.className = 'tile-ico';
+          img.alt = '';
+          el.appendChild(img);
+        }
+        const key = TILE_ICONS[t] || TILE_ICONS[0];
+        const src = tileIconSrc(key);
+        if (img.getAttribute('src') !== src) {
+          img.style.display = '';
+          img.onerror = () => {
+            img.style.display = 'none';
+            el.textContent = ICON_SET[t];
+          };
+          img.src = src;
+        }
+      }
+    }
+  }
+}
+
+function dealTiles() {
+  state.grid = new Array(CW * CH).fill(null);
+  const total = CONFIG.ROWS * CONFIG.COLS;
+  const types = [];
+  for (let i = 0; i < total; i++) types.push(i % CONFIG.ICON_COUNT);
+
+  for (let attempt = 0; attempt < 40; attempt++) {
+    shuffleArray(types);
+    let k = 0;
+    for (let r = 1; r <= CONFIG.ROWS; r++) {
+      for (let c = 1; c <= CONFIG.COLS; c++) {
+        state.grid[idx(r, c)] = types[k++];
+      }
+    }
+    if (findAnyPair()) break;
+  }
+  syncTiles();
+}
+
+function startGame() {
+  show('game');
+  buildBoard();
+  dealTiles();
+  state.remaining = CONFIG.ROWS * CONFIG.COLS;
+  state.timeLeft = CONFIG.TIME_LIMIT;
+  state.selected = null;
+  state.busy = false;
+  state.playing = true;
+  fx.length = 0;
+  updateHUD();
+  clearInterval(state.timerId);
+  state.timerId = setInterval(tick, 1000);
+  setTimeout(setupLines, 40);
+  toast('点击两个相同图案即可连接消除');
+}
+
+function tick() {
+  if (!state.playing) return;
+  state.timeLeft -= 1;
+  if (state.timeLeft <= 0) {
+    state.timeLeft = 0;
+    updateHUD();
+    lose();
+    return;
+  }
+  updateHUD();
+}
+
+function selectTile(i) {
+  clearSelection();
+  state.selected = i;
+  const el = state.tileEls.get(i);
+  if (el) el.classList.add('sel');
+}
+
+function clearSelection() {
+  if (state.selected !== null) {
+    const el = state.tileEls.get(state.selected);
+    if (el) el.classList.remove('sel');
+  }
+  state.selected = null;
+}
+
+function shakeTile(i) {
+  const el = state.tileEls.get(i);
+  if (!el) return;
+  el.classList.remove('shake');
+  void el.offsetWidth;
+  el.classList.add('shake');
+  setTimeout(() => el.classList.remove('shake'), 260);
+}
+
+function removePair(a, b, path) {
+  state.busy = true;
+  state.selected = null;
+  drawFx(path);
+  const pa = cellCenter(a.r, a.c);
+  const pb = cellCenter(b.r, b.c);
+  spawnBurst(pa.x, pa.y, ['#ffe28a', '#ffc93c', '#fff6d8']);
+  spawnBurst(pb.x, pb.y, ['#b8eca0', '#ffd75e', '#ffffff']);
+  sfxMatch();
+
+  const ia = idx(a.r, a.c);
+  const ib = idx(b.r, b.c);
+  state.grid[ia] = null;
+  state.grid[ib] = null;
+
+  [ia, ib].forEach((i) => {
+    const el = state.tileEls.get(i);
+    if (!el) return;
+    el.classList.remove('sel', 'hint');
+    el.classList.add('gone');
+    setTimeout(() => {
+      el.className = 'tile empty';
+      el.textContent = '';
+      delete el.dataset.type;
+    }, 190);
+  });
+
+  setTimeout(() => {
+    state.busy = false;
+    state.remaining = Math.max(0, state.remaining - 2);
+    updateHUD();
+    if (state.remaining === 0) {
+      win();
+      return;
+    }
+    if (!findAnyPair()) {
+      toast('没有可消除的组合，自动重排');
+      doShuffle(true);
+    }
+  }, 230);
+}
+
+function onBoardClick(e) {
+  const el = e.target.closest('.tile');
+  if (!el || !state.playing || state.busy) return;
+  if (el.classList.contains('empty') || el.classList.contains('gone')) return;
+
+  const r = Number(el.dataset.r);
+  const c = Number(el.dataset.c);
+  const i = idx(r, c);
+  if (state.grid[i] === null) return;
+
+  if (state.selected === i) {
+    clearSelection();
+    return;
+  }
+  if (state.selected === null) {
+    selectTile(i);
+    tone(520, 0.06, 'sine', 0.04);
+    return;
+  }
+
+  const prev = state.selected;
+  const a = { r: Math.floor(prev / CW), c: prev % CW };
+  const b = { r, c };
+  const same = state.grid[prev] === state.grid[i];
+  const path = same ? findPath(a, b) : null;
+
+  if (path) {
+    removePair(a, b, path);
+  } else {
+    shakeTile(i);
+    sfxBad();
+    if (same) toast('这两个方块之间没有通路');
+    selectTile(i);
+  }
+}
+
+/* ============================================================
+提示 / 重排
+============================================================ */
+function showNoChance(purpose) {
+  showModal({
+    icon: '🎟️',
+    title: '机会不足',
+    text: purpose + '每次消耗 1 次抽奖机会，当前为 ' + state.chances + ' 次。<br>通关关卡、看广告都能获得机会。',
+    buttons: [
+      { label: '看广告 +1 次', cls: 'orange', onClick: () => { show('wheelScreen'); updateWheelUI(); watchAd(); } },
+      { label: '知道了' }
+    ]
+  });
+}
+
+function useHint() {
+  if (!state.playing || state.busy) return;
+  const pair = findAnyPair();
+  if (!pair) {
+    toast('当前没有可消除的组合，试试重排');
+    return;
+  }
+  if (state.chances < CONFIG.HINT_COST) {
+    showNoChance('提示');
+    return;
+  }
+  state.chances -= CONFIG.HINT_COST;
+  save();
+  updateHUD();
+  pair.forEach((p) => {
+    const el = state.tileEls.get(idx(p.r, p.c));
+    if (!el) return;
+    el.classList.remove('hint');
+    void el.offsetWidth;
+    el.classList.add('hint');
+    setTimeout(() => el.classList.remove('hint'), 2200);
+  });
+  tone(900, 0.1, 'sine', 0.05);
+}
+
+function doShuffle(free) {
+  const list = allTiles();
+  if (list.length < 2) return;
+  const types = list.map((p) => p.t);
+  let ok = false;
+  for (let attempt = 0; attempt < 40 && !ok; attempt++) {
+    shuffleArray(types);
+    list.forEach((p, k) => { state.grid[idx(p.r, p.c)] = types[k]; });
+    ok = !!findAnyPair();
+  }
+  syncTiles();
+  clearSelection();
+  if (free) {
+    tone(440, 0.12, 'sine', 0.05);
+  }
+}
+
+function useShuffle() {
+  if (!state.playing || state.busy) return;
+  if (state.props.shuffle > 0) {
+    state.props.shuffle -= 1;
+    save();
+    updateHUD();
+    doShuffle(false);
+    toast('已使用重排道具');
+    return;
+  }
+  if (state.chances < CONFIG.SHUFFLE_COST) {
+    showNoChance('重排');
+    return;
+  }
+  state.chances -= CONFIG.SHUFFLE_COST;
+  save();
+  updateHUD();
+  doShuffle(false);
+  toast('方块已重排');
+}
+
+/* ============================================================
+胜负
+============================================================ */
+function win() {
+  state.playing = false;
+  clearInterval(state.timerId);
+  clearSelection();
+  const ratio = state.timeLeft / CONFIG.TIME_LIMIT;
+  const stars = ratio > 0.6 ? 3 : ratio > 0.3 ? 2 : 1;
+  state.chances += cfgWin();
+  save();
+  updateHUD();
+  sfxWin();
+  showModal({
+    icon: '🎉',
+    title: '通关成功',
+    text: '用时 ' + fmtTime(CONFIG.TIME_LIMIT - state.timeLeft) + ' · 剩余 ' + fmtTime(state.timeLeft) +
+      '<br>获得 <b>' + cfgWin() + '</b> 次抽奖机会，当前共 <b>' + state.chances + '</b> 次',
+    buttons: [
+      { label: '去转盘抽奖', cls: 'orange', onClick: () => { show('wheelScreen'); updateWheelUI(); } },
+      { label: '再来一局', cls: 'blue', onClick: () => startGame() },
+      { label: '返回首页', onClick: () => { show('home'); updateHUD(); maybeShowInterstitial(); } }
+    ]
+  });
+}
+
+function lose() {
+  state.playing = false;
+  clearInterval(state.timerId);
+  clearSelection();
+  sfxBad();
+  showModal({
+    icon: '⏰',
+    title: '时间到',
+    text: '还剩 <b>' + state.remaining + '</b> 个方块没有消除。<br>下次试试用提示或重排打开局面。',
+    buttons: [
+      { label: '再来一局', cls: 'blue', onClick: () => startGame() },
+      { label: '返回首页', onClick: () => { show('home'); updateHUD(); maybeShowInterstitial(); } }
+    ]
+  });
+}
+
+/* ============================================================
+转盘
+============================================================ */
+const WHEEL_IMGS = {};
+
+function preloadWheelImages() {
+  CONFIG.WHEEL.forEach((w) => {
+    if (!w.img || WHEEL_IMGS[w.key]) return;
+    const im = new Image();
+    im.onload = () => drawWheel();
+    im.src = w.img;
+    WHEEL_IMGS[w.key] = im;
+  });
+}
+
+function drawWheel() {
+  const cv = document.getElementById('wheel');
+  const g = cv.getContext('2d');
+  const N = CONFIG.WHEEL.length;
+  const R = 316;
+  const cx = 320, cy = 320;
+  const seg = (Math.PI * 2) / N;
+
+  g.clearRect(0, 0, 640, 640);
+
+  // 底盘
+  g.beginPath();
+  g.arc(cx, cy, R + 4, 0, Math.PI * 2);
+  g.fillStyle = '#f9e9bf';
+  g.fill();
+
+  // 扇区渐变
+  const palettes = [
+    ['#ffe6a1', '#f6c649'],
+    ['#a8e6a1', '#5fb84b'],
+    ['#ffd0d9', '#f2889b'],
+    ['#bfe3ff', '#5aa9e6'],
+    ['#e2d4ff', '#9b83e8'],
+    ['#ffe9b8', '#f0a83c'],
+    ['#c9f2e0', '#54bb96']
+  ];
+
+  for (let i = 0; i < N; i++) {
+    const a0 = -Math.PI / 2 - seg / 2 + i * seg;
+    const a1 = a0 + seg;
+    const pal = palettes[i % palettes.length];
+    const grad = g.createRadialGradient(cx, cy, R * 0.16, cx, cy, R);
+    grad.addColorStop(0, pal[0]);
+    grad.addColorStop(1, pal[1]);
+    g.beginPath();
+    g.moveTo(cx, cy);
+    g.arc(cx, cy, R, a0, a1);
+    g.closePath();
+    g.fillStyle = grad;
+    g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.85)';
+    g.lineWidth = 3;
+    g.stroke();
+  }
+
+  // 扇区内容：奖品图 / 金豆图标 + 外圈名称
+  for (let i = 0; i < N; i++) {
+    const item = CONFIG.WHEEL[i];
+    const mid = -Math.PI / 2 + i * seg;
+    const dist = R * 0.6;
+    const bx = cx + Math.cos(mid) * dist;
+    const by = cy + Math.sin(mid) * dist;
+    const rad = item.img ? 60 : 52;
+
+    g.beginPath();
+    g.arc(bx, by, rad + 5, 0, Math.PI * 2);
+    g.fillStyle = 'rgba(255,255,255,.9)';
+    g.fill();
+    g.beginPath();
+    g.arc(bx, by, rad, 0, Math.PI * 2);
+    g.fillStyle = '#fff8e1';
+    g.fill();
+
+    if (item.img) {
+      const img = WHEEL_IMGS[item.key];
+      if (img && img.complete && img.naturalWidth) {
+        g.save();
+        g.beginPath();
+        g.arc(bx, by, rad, 0, Math.PI * 2);
+        g.clip();
+        const sc = Math.max((rad * 2) / img.naturalWidth, (rad * 2) / img.naturalHeight);
+        g.drawImage(img, bx - (img.naturalWidth * sc) / 2, by - (img.naturalHeight * sc) / 2, img.naturalWidth * sc, img.naturalHeight * sc);
+        g.restore();
+      } else {
+        g.fillStyle = '#b08a4a';
+        g.font = 'bold 22px -apple-system,"PingFang SC",sans-serif';
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText('奖品', bx, by);
+      }
+    } else {
+      g.font = '62px "Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol",sans-serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(item.icon, bx, by);
+    }
+
+    g.beginPath();
+    g.arc(bx, by, rad, 0, Math.PI * 2);
+    g.strokeStyle = 'rgba(255,255,255,.95)';
+    g.lineWidth = 4;
+    g.stroke();
+
+    const flip = Math.sin(mid) > 0;
+    g.save();
+    g.translate(cx, cy);
+    g.rotate(mid + Math.PI / 2 + (flip ? Math.PI : 0));
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillStyle = '#4a3a1a';
+    g.font = 'bold 28px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillText(item.short, 0, flip ? R * 0.86 : -R * 0.86);
+    g.restore();
+  }
+
+  // 外圈灯泡
+  for (let i = 0; i < 28; i++) {
+    const a = (Math.PI * 2 * i) / 28 - Math.PI / 2;
+    const lx = cx + Math.cos(a) * (R - 16);
+    const ly = cy + Math.sin(a) * (R - 16);
+    g.beginPath();
+    g.arc(lx, ly, i % 2 === 0 ? 4.6 : 3, 0, Math.PI * 2);
+    g.fillStyle = i % 2 === 0 ? '#fffdf0' : 'rgba(255,255,255,.62)';
+    g.fill();
+  }
+
+  // 中心底座
+  const hub = g.createRadialGradient(cx - 18, cy - 22, 8, cx, cy, R * 0.2);
+  hub.addColorStop(0, '#fffdf2');
+  hub.addColorStop(1, '#f3d27a');
+  g.beginPath();
+  g.arc(cx, cy, R * 0.2, 0, Math.PI * 2);
+  g.fillStyle = hub;
+  g.fill();
+  g.strokeStyle = 'rgba(255,255,255,.9)';
+  g.lineWidth = 5;
+  g.stroke();
+}
+
+function updateWheelUI() {
+  $('#wheelChance').textContent = state.chances;
+  updateAdBtn();
+}
+
+function cfgWin() {
+  return state.cfg && typeof state.cfg.winChance === 'number' ? state.cfg.winChance : CONFIG.WIN_CHANCE;
+}
+
+function cfgWeight(i) {
+  const w = state.cfg && Array.isArray(state.cfg.weights) ? state.cfg.weights[i] : null;
+  return typeof w === 'number' && w >= 0 ? w : CONFIG.WHEEL[i].weight;
+}
+
+function cfgCost(i) {
+  const c = state.cfg && Array.isArray(state.cfg.costs) ? state.cfg.costs[i] : null;
+  return typeof c === 'number' && c >= 0 ? c : SHOP_ITEMS[i].cost;
+}
+
+function pickWeighted() {
+  let total = 0;
+  CONFIG.WHEEL.forEach((w, i) => { total += Math.max(0, cfgWeight(i)); });
+  if (total <= 0) return 0;
+  let r = Math.random() * total;
+  for (let i = 0; i < CONFIG.WHEEL.length; i++) {
+    r -= Math.max(0, cfgWeight(i));
+    if (r <= 0) return i;
+  }
+  return CONFIG.WHEEL.length - 1;
+}
+
+function spin() {
+  if (state.spinning) return;
+  if (state.chances < 1) {
+    showModal({
+      icon: '🎟️',
+      title: '抽奖机会不足',
+      text: '抽一次需要 1 次机会，当前为 0 次。<br>看一段广告即可获得 1 次。',
+      buttons: [
+        { label: '看广告 +1 次', cls: 'orange', onClick: () => watchAd() },
+        { label: '知道了' }
+      ]
+    });
+    return;
+  }
+  state.chances -= 1;
+  state.stats.spins += 1;
+  save();
+  updateHUD();
+  updateWheelUI();
+
+  const i = pickWeighted();
+  const N = CONFIG.WHEEL.length;
+  const segDeg = 360 / N;
+  const desired = ((360 - i * segDeg) % 360 + 360) % 360;
+  const jitter = (Math.random() - 0.5) * segDeg * 0.6;
+  const cur = ((wheelRot % 360) + 360) % 360;
+  const delta = ((desired - cur) % 360 + 360) % 360;
+  wheelRot += 360 * 5 + delta + jitter;
+
+  const cv = document.getElementById('wheel');
+  cv.style.transition = 'transform 4.2s cubic-bezier(.17,.67,.16,1)';
+  cv.style.transform = 'rotate(' + wheelRot + 'deg)';
+  state.spinning = true;
+
+  const wrap = document.getElementById('wheelWrap');
+  wrap.classList.add('spin');
+  const btn = $('#btnSpin');
+  btn.disabled = true;
+  sfxSpin();
+
+  setTimeout(() => {
+    state.spinning = false;
+    wrap.classList.remove('spin');
+    btn.disabled = false;
+    settle(i);
+  }, 4300);
+}
+
+function settle(i) {
+  const item = CONFIG.WHEEL[i];
+  let award = null;
+
+  if (item.type === 'bean') {
+    state.beans += item.bean;
+    state.stats.beans += item.bean;
+    pushEvent('bean', { amount: item.bean, at: Date.now() });
+    award = {
+      kicker: '金豆奖励',
+      emoji: '🪙',
+      name: '金豆 +' + item.bean,
+      amount: '+' + item.bean,
+      sub: '已存入金豆余额，当前共 <b>' + state.beans + '</b> 金豆',
+      tag: '可直接兑换'
+    };
+    sfxCoin();
+    startConfetti();
+  } else {
+    const meta = PRIZE_META[item.prize];
+    if (item.needAd && state.adCount < CONFIG.AD_FOR_DOLL) {
+      award = {
+        kicker: '奖品待解锁',
+        img: meta.img,
+        locked: true,
+        name: meta.name,
+        sub: '累计看满 ' + CONFIG.AD_FOR_DOLL + ' 次广告才能解锁，当前 ' + state.adCount + '/' + CONFIG.AD_FOR_DOLL + '。<br>再攒几次广告就有机会带走它。',
+        tag: '需解锁'
+      };
+      sfxBad();
+    } else {
+      state.prizes[item.prize] = (state.prizes[item.prize] | 0) + 1;
+      pushEvent('prize', { key: item.prize, name: meta.name, at: Date.now() });
+      award = {
+        kicker: '恭喜获得',
+        img: meta.img,
+        name: meta.name,
+        sub: '已放入「我的奖品」，累计 <b>' + state.prizes[item.prize] + '</b> 个<br>请填写收货信息，方便我们安排发货。',
+        tag: item.needAd ? '限量奖品' : '实物奖品',
+        needShip: true,
+        prizeKey: item.prize
+      };
+      sfxWin();
+      startConfetti();
+    }
+  }
+
+  save();
+  updateHUD();
+  updateWheelUI();
+  refreshPrizes();
+  updateMusicBtn();
+  showAwardModal(award);
+}
+
+/* ============================================================
+实物奖品收货信息
+============================================================ */
+const SHIP_KEY = 'village-ship-v1';
+let shipTarget = null;
+
+function readShipLog() {
+  try {
+    const d = JSON.parse(localStorage.getItem(SHIP_KEY) || '{}');
+    return d && typeof d === 'object' ? d : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function markShipped(key) {
+  const m = readShipLog();
+  m[key] = Date.now();
+  try {
+    localStorage.setItem(SHIP_KEY, JSON.stringify(m));
+  } catch (e) { /* 忽略 */ }
+}
+
+function openShipModal(prizeKey, prizeName) {
+  const meta = PRIZE_META[prizeKey] || { name: prizeName || '实物奖品' };
+  shipTarget = { mode: 'prize', key: prizeKey, name: meta.name };
+  $('#shipPrize').textContent = '奖品：' + meta.name + '。请填写真实收货信息，我们将在 7 个工作日内安排发货。';
+  $('#shipErr').textContent = '';
+  $('#shipModal').classList.add('show');
+}
+
+async function submitShip() {
+  if (!shipTarget) return;
+  if (shipTarget.mode === 'redeem') return submitRedeemShip();
+  const receiver = $('#shipName').value.trim();
+  const phone = $('#shipPhone').value.trim();
+  const province = $('#shipProv').value.trim();
+  const city = $('#shipCity').value.trim();
+  const district = $('#shipDist').value.trim();
+  const address = $('#shipAddr').value.trim();
+  const err = $('#shipErr');
+  if (!receiver) { err.textContent = '请填写收件人姓名'; return; }
+  if (!/^1[3-9]\d{9}$/.test(phone)) { err.textContent = '请填写正确的 11 位手机号'; return; }
+  if (!province || !city || !district) { err.textContent = '请填写完整的省 / 市 / 区县'; return; }
+  if (address.length < 4) { err.textContent = '详细地址至少 4 个字，请写清街道门牌'; return; }
+  err.textContent = '';
+
+  const btn = $('#btnShipSubmit');
+  btn.disabled = true;
+  btn.textContent = '提交中…';
+  try {
+    const data = await api('submit_order', {
+      prizeKey: shipTarget.key,
+      prizeName: shipTarget.name,
+      receiver: receiver,
+      phone: phone,
+      province: province,
+      city: city,
+      district: district,
+      address: address,
+      token: auth.token || ''
+    });
+    if (!data || data.ok !== true) throw new Error('failed');
+    markShipped(shipTarget.key);
+    $('#shipModal').classList.remove('show');
+    toast('收货信息已提交，我们会尽快安排发货', 'ok');
+    pushEvent('order', { key: shipTarget.key, at: Date.now() });
+  } catch (e) {
+    err.textContent = '提交失败，请检查网络后重试';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '提交收货信息';
+  }
+}
+
+async function submitRedeemShip() {
+  if (!shipTarget || shipTarget.mode !== 'redeem') return;
+  const receiver = $('#shipName').value.trim();
+  const phone = $('#shipPhone').value.trim();
+  const province = $('#shipProv').value.trim();
+  const city = $('#shipCity').value.trim();
+  const district = $('#shipDist').value.trim();
+  const address = $('#shipAddr').value.trim();
+  const err = $('#shipErr');
+  if (!receiver) { err.textContent = '请填写收件人姓名'; return; }
+  if (!/^1[3-9]\d{9}$/.test(phone)) { err.textContent = '请填写正确的 11 位手机号'; return; }
+  if (!province || !city || !district) { err.textContent = '请填写完整的省 / 市 / 区县'; return; }
+  if (address.length < 4) { err.textContent = '详细地址至少 4 个字，请写清街道门牌'; return; }
+  err.textContent = '';
+  const btn = $('#btnShipSubmit');
+  btn.disabled = true;
+  btn.textContent = '提交中…';
+  const ok = await finishRedeem(shipTarget.item, { receiver, phone, province, city, district, address });
+  btn.disabled = false;
+  btn.textContent = '提交收货信息';
+  if (ok) $('#shipModal').classList.remove('show');
+  else err.textContent = '兑换未完成，请稍后重试';
+}
+
+/* ============================================================
+后台：中奖订单
+============================================================ */
+let adminOrders = [];
+
+function fillOrderPrizes() {
+  const sel = $('#ordPrize');
+  if (!sel || sel.options.length) return;
+  const all = document.createElement('option');
+  all.value = '';
+  all.textContent = '全部奖品';
+  sel.appendChild(all);
+  PRIZE_ORDER.forEach((k) => {
+    const o = document.createElement('option');
+    o.value = k;
+    o.textContent = PRIZE_META[k].name;
+    sel.appendChild(o);
+  });
+}
+
+async function loadAdminOrders() {
+  const box = $('#adminOrders');
+  if (!box) return;
+  fillOrderPrizes();
+  box.textContent = '';
+  if (!adminCreds.account) {
+    const t = document.createElement('div');
+    t.className = 'admin-empty';
+    t.textContent = '当前为离线校验模式，联网登录后台后可查看中奖订单';
+    box.appendChild(t);
+    return;
+  }
+  const loading = document.createElement('div');
+  loading.className = 'admin-empty';
+  loading.textContent = '正在读取中奖订单…';
+  box.appendChild(loading);
+  try {
+    const data = await api('admin_orders', {
+      account: adminCreds.account,
+      password: adminCreds.password,
+      keyword: ($('#ordKeyword') && $('#ordKeyword').value.trim()) || '',
+      prizeKey: ($('#ordPrize') && $('#ordPrize').value) || '',
+      from: ($('#ordFrom') && $('#ordFrom').value) || '',
+      to: ($('#ordTo') && $('#ordTo').value) || ''
+    });
+    if (!data || data.ok !== true) throw new Error('failed');
+    adminOrders = Array.isArray(data.orders) ? data.orders : [];
+    renderOrders();
+  } catch (e) {
+    box.textContent = '';
+    const t = document.createElement('div');
+    t.className = 'admin-empty';
+    t.textContent = '订单读取失败，请检查网络后重试';
+    box.appendChild(t);
+  }
+}
+
+function renderOrders() {
+  const box = $('#adminOrders');
+  if (!box) return;
+  box.innerHTML = '';
+  if (!adminOrders.length) {
+    const t = document.createElement('div');
+    t.className = 'admin-empty';
+    t.textContent = '暂无中奖订单';
+    box.appendChild(t);
+    return;
+  }
+  adminOrders.forEach((o) => {
+    const item = document.createElement('div');
+    item.className = 'order-item';
+    const head = document.createElement('div');
+    head.className = 'order-line';
+    const name = document.createElement('b');
+    name.textContent = o.prize_name || o.prize_key || '奖品';
+    head.appendChild(name);
+    const st = document.createElement('span');
+    st.className = 'order-meta';
+    st.textContent = ' ' + (o.status === 'pending' || !o.status ? '待发货' : o.status);
+    head.appendChild(st);
+    item.appendChild(head);
+
+    const who = document.createElement('div');
+    who.className = 'order-line';
+    who.textContent = (o.receiver || '') + ' · ' + (o.phone || '');
+    item.appendChild(who);
+
+    const addr = document.createElement('div');
+    addr.className = 'order-line';
+    addr.textContent = (o.province || '') + (o.city || '') + (o.district || '') + (o.address || '');
+    item.appendChild(addr);
+
+    const meta = document.createElement('div');
+    meta.className = 'order-meta';
+    const t = o.created_at ? new Date(o.created_at) : null;
+    meta.textContent = (t && !isNaN(t.getTime()) ? t.toLocaleString('zh-CN') : '') + (o.user_id ? ' · 已登录账号' : ' · 游客');
+    item.appendChild(meta);
+    box.appendChild(item);
+  });
+}
+
+function exportOrders() {
+  if (!adminOrders.length) {
+    toast('暂无可导出的订单');
+    return;
+  }
+  const rows = [['提交时间', '奖品', '收件人', '手机号', '省', '市', '区县', '详细地址', '状态']];
+  adminOrders.forEach((o) => {
+    const t = o.created_at ? new Date(o.created_at) : null;
+    rows.push([
+      t && !isNaN(t.getTime()) ? t.toLocaleString('zh-CN') : '',
+      o.prize_name || o.prize_key || '',
+      o.receiver || '',
+      o.phone || '',
+      o.province || '',
+      o.city || '',
+      o.district || '',
+      o.address || '',
+      o.status === 'pending' || !o.status ? '待发货' : o.status
+    ]);
+  });
+  const csv = '\ufeff' + rows.map((r) => r.map((c) => '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'village-prize-orders-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  toast('已导出订单 CSV', 'ok');
+}
+
+function showAwardModal(award) {
+  const box = $('#modalBox');
+  box.className = 'modal-box award-box';
+  box.innerHTML = '';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'award';
+
+  const ring = document.createElement('div');
+  ring.className = 'award-ring' + (award.locked ? ' locked' : '');
+  if (award.img) {
+    const im = document.createElement('img');
+    im.src = award.img;
+    im.alt = award.name + ' 奖品图';
+    ring.appendChild(im);
+    if (award.locked) {
+      const lock = document.createElement('div');
+      lock.className = 'award-lock';
+      lock.textContent = '🔒';
+      ring.appendChild(lock);
+    }
+  } else {
+    const em = document.createElement('div');
+    em.className = 'award-emoji';
+    em.textContent = award.emoji || '🎁';
+    ring.appendChild(em);
+  }
+  wrap.appendChild(ring);
+
+  const kicker = document.createElement('p');
+  kicker.className = 'award-kicker';
+  kicker.textContent = award.kicker;
+  wrap.appendChild(kicker);
+
+  const name = document.createElement('div');
+  name.className = 'award-name';
+  name.textContent = award.name;
+  wrap.appendChild(name);
+
+  if (award.amount) {
+    const amt = document.createElement('div');
+    amt.className = 'award-amount';
+    amt.textContent = award.amount;
+    wrap.appendChild(amt);
+  }
+
+  if (award.tag) {
+    const tag = document.createElement('span');
+    tag.className = 'award-tag' + (award.locked ? ' lock' : '');
+    tag.textContent = award.tag;
+    wrap.appendChild(tag);
+  }
+
+  const sub = document.createElement('div');
+  sub.className = 'award-sub';
+  sub.innerHTML = award.sub || '';
+  wrap.appendChild(sub);
+
+  box.appendChild(wrap);
+
+  const row = document.createElement('div');
+  row.className = 'modal-btns';
+  const list = [];
+  if (award.locked) list.push({ label: '看广告解锁', cls: 'orange', onClick: () => watchAd() });
+  else if (award.needShip) {
+    const shipped = !!readShipLog()[award.prizeKey];
+    list.push({
+      label: shipped ? '修改收货信息' : '填写收货地址',
+      cls: 'orange',
+      onClick: () => openShipModal(award.prizeKey, award.name)
+    });
+  } else if (state.chances > 0) list.push({ label: '再抽一次', cls: 'orange', onClick: () => spin() });
+  list.push({ label: '查看奖品', cls: 'blue', onClick: () => openPrizes() });
+  list.push({ label: '返回', onClick: () => { show('home'); updateHUD(); } });
+
+  list.forEach((b) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn ' + (b.cls || '');
+    btn.textContent = b.label;
+    btn.onclick = () => {
+      closeModal();
+      if (typeof b.onClick === 'function') b.onClick();
+    };
+    row.appendChild(btn);
+  });
+  box.appendChild(row);
+  $('#modal').classList.add('show');
+}
+
+/* ============================================================
+礼花彩带
+============================================================ */
+const confCanvas = document.getElementById('confetti');
+const confCtx = confCanvas.getContext('2d');
+const CONFETTI_COLORS = ['#ffd75e', '#ff9d4d', '#8fd06a', '#7cc7f0', '#f4b6c2', '#b9a7f0', '#ffffff'];
+let confParts = [];
+let confRaf = 0;
+let confDpr = 1;
+
+const rand = (min, max) => min + Math.random() * (max - min);
+
+function sizeConfetti() {
+  confDpr = Math.min(2, window.devicePixelRatio || 1);
+  confCanvas.width = Math.round(window.innerWidth * confDpr);
+  confCanvas.height = Math.round(window.innerHeight * confDpr);
+}
+
+function makeConfetti(x, y, vx, vy, shapeChance) {
+  return {
+    x,
+    y,
+    vx,
+    vy,
+    rot: rand(0, 6.28),
+    vr: rand(-0.35, 0.35),
+    w: rand(5, 9),
+    h: rand(10, 18),
+    color: CONFETTI_COLORS[(Math.random() * CONFETTI_COLORS.length) | 0],
+    shape: Math.random() < shapeChance ? 'ribbon' : 'rect'
+  };
+}
+
+function startConfetti() {
+  sizeConfetti();
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  confParts = [];
+
+  [-1, 1].forEach((side) => {
+    const ox = side < 0 ? -10 : W + 10;
+    const oy = H * 0.86;
+    for (let i = 0; i < 52; i++) {
+      const ang = (side < 0 ? -Math.PI / 3 : (-Math.PI * 2) / 3) + rand(-0.42, 0.42);
+      const sp = rand(7, 15);
+      confParts.push(makeConfetti(ox, oy, Math.cos(ang) * sp, Math.sin(ang) * sp, 0.42));
+    }
+  });
+
+  for (let i = 0; i < 38; i++) {
+    confParts.push(makeConfetti(rand(0, W), rand(-H * 0.45, -12), rand(-1.4, 1.4), rand(1.6, 4), 0.35));
+  }
+
+  if (confRaf) cancelAnimationFrame(confRaf);
+  confRaf = requestAnimationFrame(confLoop);
+}
+
+function confLoop() {
+  const g = confCtx;
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, confCanvas.width, confCanvas.height);
+  g.setTransform(confDpr, 0, 0, confDpr, 0, 0);
+
+  for (let i = confParts.length - 1; i >= 0; i--) {
+    const p = confParts[i];
+    p.vy += 0.26;
+    p.vx *= 0.992;
+    p.vy *= 0.995;
+    p.x += p.vx;
+    p.y += p.vy;
+    p.rot += p.vr;
+    if (p.y > H + 60 || p.x < -80 || p.x > W + 80) {
+      confParts.splice(i, 1);
+      continue;
+    }
+    g.save();
+    g.translate(p.x, p.y);
+    g.rotate(p.rot);
+    g.fillStyle = p.color;
+    if (p.shape === 'ribbon') {
+      g.beginPath();
+      g.moveTo(-p.w / 2, -p.h / 2);
+      g.quadraticCurveTo(p.w, 0, -p.w / 2, p.h / 2);
+      g.quadraticCurveTo(p.w * 0.2, p.h / 2, p.w / 2, -p.h / 2);
+      g.closePath();
+      g.fill();
+    } else {
+      g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+    }
+    g.restore();
+  }
+
+  if (confParts.length) {
+    confRaf = requestAnimationFrame(confLoop);
+  } else {
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, confCanvas.width, confCanvas.height);
+    confRaf = 0;
+  }
+}
+
+/* ============================================================
+广告
+============================================================ */
+/* 原生广告桥：Android 壳内注入 window.WhaleAdBridge.showRewarded(placementId)
+   并回调 window.WhaleAd.onEvent({result:'reward'|'closed'|'error'})。
+   无原生桥（普通浏览器）时回退为本地模拟倒计时。 */
+/* 桥由 Android 通过 addJavascriptInterface 注入，必须在点击瞬间读取；
+   若在脚本初始化时缓存成常量，注入时序一变就会拿不到桥而误走模拟路径。 */
+function getAdBridge() {
+  const bridge = window.WhaleAdBridge;
+  return (bridge && typeof bridge.showRewarded === 'function') ? bridge : null;
+}
+
+window.WhaleAd = {
+  onEvent(raw) {
+    let detail = {};
+    try {
+      detail = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
+    } catch (e) {
+      detail = { result: 'error' };
+    }
+    window.dispatchEvent(new CustomEvent('whale-ad-reward', { detail: detail }));
+  }
+};
+
+window.addEventListener('whale-ad-reward', (e) => {
+  onAdDone((e.detail && e.detail.result) || 'error');
+});
+
+let AD_CTX = null;
+
+/* 激励广告管理模块：预加载 → 展示 → 状态监听 → 超时兜底 → 埋点上报 */
+let AD_WD = 0;
+
+function adTrack(slot, event, extra) {
+  try {
+    api('ad_event', {
+      slot: slot,
+      event: event,
+      placementId: slot === 'rewarded' ? (CONFIG.AD_PLACEMENT_ID || '') : '',
+      extra: extra || null
+    }).catch(() => { /* 上报失败不影响体验 */ });
+  } catch (e) { /* 忽略 */ }
+}
+
+function adPreload() {
+  const bridge = getAdBridge();
+  if (bridge && typeof bridge.preloadRewarded === 'function') {
+    try { bridge.preloadRewarded(); } catch (e) { /* 忽略 */ }
+  }
+}
+
+function armAdWatchdog() {
+  clearTimeout(AD_WD);
+  AD_WD = setTimeout(() => {
+    if (!AD_CTX) return;
+    AD_CTX = null;
+    $('#adOverlay').classList.remove('show');
+    clearInterval(state.adTimer);
+    adTrack('rewarded', 'error', { reason: 'timeout' });
+    toast('广告响应超时，请稍后重试，积分未扣除');
+    sfxBad();
+  }, (CONFIG.AD_TIMEOUT || 90) * 1000);
+}
+
+/* 统一入口：purpose = chance（看广告得抽奖机会）/ redeem（兑换前闸门）/ prop（领重排道具） */
+function startAd(purpose, item) {
+  AD_CTX = { purpose: purpose, item: item || null };
+  armAdWatchdog();
+  adTrack('rewarded', 'impression');
+
+  const bridge = getAdBridge();
+  if (bridge) {
+    try {
+      const started = bridge.showRewarded(CONFIG.AD_PLACEMENT_ID || '');
+      if (started) {
+        toast('正在加载激励视频…');
+        return;
+      }
+    } catch (e) {
+      adTrack('rewarded', 'error', { reason: 'bridge_exception' });
+    }
+    if (!CONFIG.AD_FALLBACK) {
+      AD_CTX = null;
+      clearTimeout(AD_WD);
+      adTrack('rewarded', 'error', { reason: 'no_fill' });
+      toast('广告加载失败，请稍后再试（未扣积分）');
+      return;
+    }
+  }
+
+  if (!CONFIG.AD_FALLBACK) {
+    // 没有原生桥：明确告知，而不是黑屏倒计时
+    AD_CTX = null;
+    clearTimeout(AD_WD);
+    adTrack('rewarded', 'error', { reason: 'no_bridge' });
+    showModal({
+      icon: '📺',
+      title: '请在手机上观看广告',
+      text: '当前是网页预览环境，连不上灰鲸广告。<br>请安装正式 App 后再点看广告，加载失败不会扣积分。',
+      buttons: [{ label: '知道了' }]
+    });
+    return;
+  }
+
+  runSimulatedAd();
+}
+
+function watchAd() {
+  const left = Math.ceil((state.adReadyAt - Date.now()) / 1000);
+  if (left > 0) {
+    toast('广告冷却中，还需 ' + left + ' 秒');
+    return;
+  }
+  startAd('chance');
+}
+
+/* 「看广告领重排道具」入口 */
+function requestPropAd() {
+  const left = Math.ceil((state.adReadyAt - Date.now()) / 1000);
+  if (left > 0) {
+    toast('广告冷却中，还需 ' + left + ' 秒');
+    return;
+  }
+  showModal({
+    icon: '📺',
+    title: '看广告领重排道具',
+    text: '完整观看一段激励视频，即可获得 <b>1 个重排道具</b>。<br>中途退出、跳过或广告加载失败都不会发放奖励，也不会影响当前进度。',
+    buttons: [
+      { label: '开始观看', cls: 'orange', onClick: () => startAd('prop') },
+      { label: '以后再说' }
+    ]
+  });
+}
+
+function rewardPropAd() {
+  state.props.shuffle += 1;
+  state.adCount += 1;
+  state.adReadyAt = Date.now() + CONFIG.AD_COOLDOWN * 1000;
+  save();
+  updateHUD();
+  updateWheelUI();
+  sfxCoin();
+  showModal({
+    icon: '🔄',
+    title: '获得重排道具 ×1',
+    text: '当前持有 <b>' + state.props.shuffle + '</b> 个重排道具。<br>关卡卡住时点「重排」即可重排全部方块。',
+    buttons: [{ label: '好的' }]
+  });
+}
+
+/* 本地模拟广告：仅用于无原生桥的浏览器，或 AD_FALLBACK 打开时的兜底 */
+function runSimulatedAd() {
+  const ov = $('#adOverlay');
+  const cd = $('#adCountdown');
+  const bar = $('#adBar');
+  clearInterval(state.adTimer);
+  ov.classList.add('show');
+  cd.textContent = String(CONFIG.AD_DURATION);
+  bar.style.width = '0%';
+
+  let total = CONFIG.AD_DURATION * 10;
+  let ticks = 0;
+  state.adTimer = setInterval(() => {
+    ticks += 1;
+    cd.textContent = String(Math.max(0, Math.ceil((total - ticks) / 10)));
+    bar.style.width = Math.min(100, (ticks / total) * 100) + '%';
+    if (ticks >= total) {
+      clearInterval(state.adTimer);
+      ov.classList.remove('show');
+      onAdDone('reward');
+    }
+  }, 100);
+}
+
+function finishAd() {
+  state.chances += 1;
+  state.adCount += 1;
+  state.adReadyAt = Date.now() + CONFIG.AD_COOLDOWN * 1000;
+  save();
+  updateHUD();
+  updateWheelUI();
+  refreshPrizes();
+  tone(760, 0.16, 'triangle', 0.07);
+
+  const unlocked = state.adCount >= CONFIG.AD_FOR_DOLL;
+  showModal({
+    icon: '🎁',
+    title: '获得 1 次抽奖机会',
+    text: '当前共 <b>' + state.chances + '</b> 次。<br>看广告进度 ' + Math.min(state.adCount, CONFIG.AD_FOR_DOLL) + '/' + CONFIG.AD_FOR_DOLL +
+      (unlocked ? '，小熊挂链已解锁！' : '，满 ' + CONFIG.AD_FOR_DOLL + ' 次解锁小熊挂链。'),
+    buttons: [
+      { label: '去抽奖', cls: 'orange', onClick: () => { show('wheelScreen'); updateWheelUI(); } },
+      { label: '好的', onClick: () => { show('home'); updateHUD(); } }
+    ]
+  });
+}
+
+function updateAdBtn() {
+  const btn = $('#btnWatchAd');
+  if (!btn) return;
+  const left = Math.ceil((state.adReadyAt - Date.now()) / 1000);
+  if (left > 0) {
+    btn.disabled = true;
+    btn.textContent = '广告冷却 ' + left + 's';
+  } else {
+    btn.disabled = false;
+    btn.textContent = '看广告 +1 次';
+  }
+}
+
+/* ============================================================
+奖品页
+============================================================ */
+function refreshPrizes() {
+  const dots = $('#adDots').children;
+  for (let i = 0; i < dots.length; i++) {
+    dots[i].classList.toggle('on', i < state.adCount);
+  }
+
+  const list = $('#prizeList');
+  list.innerHTML = '';
+  PRIZE_ORDER.forEach((key) => {
+    const meta = PRIZE_META[key];
+    const count = state.prizes[key] | 0;
+    const locked = !!meta.needAd && state.adCount < CONFIG.AD_FOR_DOLL;
+    const row = document.createElement('div');
+    row.className = 'prize-item';
+
+    const ico = document.createElement('img');
+    ico.className = 'ico';
+    ico.src = meta.img;
+    ico.alt = meta.name + ' 奖品图';
+
+    const txt = document.createElement('span');
+    txt.className = 'txt';
+    const name = document.createElement('b');
+    name.textContent = meta.name;
+    txt.appendChild(name);
+    if (meta.needAd) {
+      txt.appendChild(document.createTextNode(
+        locked
+          ? '累计看 ' + CONFIG.AD_FOR_DOLL + ' 次广告解锁（' + Math.min(state.adCount, CONFIG.AD_FOR_DOLL) + '/' + CONFIG.AD_FOR_DOLL + '）'
+          : '已解锁 · 转盘可抽中'
+      ));
+    } else {
+      txt.appendChild(document.createTextNode(count > 0 ? '已获得 ' + count + ' 个' : '还没抽到，去转盘试试'));
+    }
+
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    if (locked) {
+      tag.classList.add('lock');
+      tag.textContent = '未解锁';
+    } else {
+      tag.textContent = count > 0 ? '×' + count : '未获得';
+    }
+
+    row.appendChild(ico);
+    row.appendChild(txt);
+    row.appendChild(tag);
+    list.appendChild(row);
+  });
+}
+
+/* ============================================================
+每日签到
+============================================================ */
+const SIGN_REWARDS = [
+  { bean: 10, chance: 0 },
+  { bean: 15, chance: 0 },
+  { bean: 20, chance: 1 },
+  { bean: 25, chance: 1 },
+  { bean: 30, chance: 1 },
+  { bean: 40, chance: 2 },
+  { bean: 60, chance: 3 }
+];
+
+function pad2(n) {
+  return n < 10 ? '0' + n : '' + n;
+}
+
+function dateStr(d) {
+  const t = d || new Date();
+  return t.getFullYear() + '-' + pad2(t.getMonth() + 1) + '-' + pad2(t.getDate());
+}
+
+function signInfo() {
+  const today = dateStr();
+  const yest = dateStr(new Date(Date.now() - 86400000));
+  const signedToday = state.sign.last === today;
+  const continued = state.sign.last === yest;
+  const nextStreak = signedToday ? state.sign.streak : continued ? state.sign.streak + 1 : 1;
+  const dayIndex = signedToday ? Math.max(0, (state.sign.streak - 1) % 7) : (nextStreak - 1) % 7;
+  return { today, signedToday, continued, nextStreak, dayIndex };
+}
+
+function openSignModal() {
+  const info = signInfo();
+  const box = $('#modalBox');
+  box.className = 'modal-box sign-box';
+  box.innerHTML = '';
+
+  const head = document.createElement('div');
+  head.className = 'sign-head';
+  const title = document.createElement('h2');
+  title.className = 'sign-title';
+  title.textContent = '📅 每日签到';
+  const streak = document.createElement('p');
+  streak.className = 'sign-streak';
+  streak.textContent = info.signedToday
+    ? '今天已签到 · 已连续签到 ' + state.sign.streak + ' 天'
+    : '今天签到即可连续 ' + info.nextStreak + ' 天（已连续 ' + (info.continued ? state.sign.streak : 0) + ' 天）';
+  head.appendChild(title);
+  head.appendChild(streak);
+  box.appendChild(head);
+
+  const grid = document.createElement('div');
+  grid.className = 'sign-grid';
+  SIGN_REWARDS.forEach((r, i) => {
+    const isToday = i === info.dayIndex;
+    const cell = document.createElement('div');
+    cell.className = 'sign-day' + (isToday ? ' today' : '') + (isToday && info.signedToday ? ' done' : '');
+    const d = document.createElement('span');
+    d.className = 'd';
+    d.textContent = '第' + (i + 1) + '天';
+    const b = document.createElement('span');
+    b.className = 'b';
+    b.textContent = '🪙' + r.bean;
+    cell.appendChild(d);
+    cell.appendChild(b);
+    if (r.chance > 0) {
+      const c = document.createElement('span');
+      c.className = 'c';
+      c.textContent = '🎟️+' + r.chance;
+      cell.appendChild(c);
+    }
+    grid.appendChild(cell);
+  });
+  box.appendChild(grid);
+
+  const tip = document.createElement('div');
+  tip.className = 'sign-tip';
+  tip.textContent = '连续签到奖励每天递增，7 天为一轮；中断一天则从第 1 天重新计算。每天 0 点后可再次签到。';
+  box.appendChild(tip);
+
+  const bar = document.createElement('div');
+  bar.className = 'modal-btns';
+  const btn = document.createElement('button');
+  btn.className = 'btn orange';
+  if (info.signedToday) {
+    btn.textContent = '今日已签到';
+    btn.disabled = true;
+  } else {
+    const r = SIGN_REWARDS[info.dayIndex];
+    btn.textContent = '签到领 ' + r.bean + ' 金豆' + (r.chance > 0 ? ' + ' + r.chance + ' 次机会' : '');
+    btn.onclick = signToday;
+  }
+  bar.appendChild(btn);
+  const later = document.createElement('button');
+  later.className = 'btn';
+  later.textContent = '稍后再说';
+  later.onclick = closeModal;
+  bar.appendChild(later);
+  box.appendChild(bar);
+
+  $('#modal').classList.add('show');
+}
+
+function signToday() {
+  const info = signInfo();
+  if (info.signedToday) return;
+  const r = SIGN_REWARDS[info.dayIndex];
+  state.sign.streak = info.nextStreak;
+  state.sign.last = info.today;
+  state.sign.total += 1;
+  state.sign.log.push({ d: info.today, bean: r.bean, chance: r.chance });
+  if (state.sign.log.length > 60) state.sign.log.shift();
+  state.beans += r.bean;
+  state.chances += r.chance;
+  state.stats.beans += r.bean;
+  pushEvent('sign', { date: info.today, bean: r.bean, chance: r.chance });
+  save();
+  updateHUD();
+  updateWheelUI();
+  sfxCoin();
+  startConfetti();
+  toast('签到成功：+' + r.bean + ' 金豆' + (r.chance > 0 ? '，+' + r.chance + ' 次抽奖机会' : ''));
+  openSignModal();
+}
+
+/* ============================================================
+运营后台
+============================================================ */
+const ADMIN_ACCT = '15729129390';
+const ADMIN_PWD = '12312300';
+
+/* ============================================================
+微信登录 / 账号登录
+============================================================ */
+const AUTH_KEY = 'village-auth-v1';
+const SB_BASE = API_URL.replace('/functions/v1/game-sync', '');
+const AUTH_API = SB_BASE + '/auth/v1';
+const WX_API = SB_BASE + '/functions/v1/wechat-auth';
+const auth = { token: '', name: '', userId: '', busy: false };
+
+function saveAuth() {
+  try {
+    localStorage.setItem(AUTH_KEY, JSON.stringify({ token: auth.token, name: auth.name, userId: auth.userId }));
+  } catch (e) { /* 忽略 */ }
+}
+
+function readAuth() {
+  try {
+    const raw = localStorage.getItem(AUTH_KEY);
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    auth.token = typeof d.token === 'string' ? d.token : '';
+    auth.name = typeof d.name === 'string' ? d.name : '';
+    auth.userId = typeof d.userId === 'string' ? d.userId : '';
+  } catch (e) { /* 忽略 */ }
+}
+
+function setLoginStatus(kind, msg) {
+  const el = $('#loginStatus');
+  if (!el) return;
+  el.className = 'login-status' + (kind ? ' ' + kind : '');
+  el.textContent = msg || '';
+}
+
+function updateLoginChip() {
+  const btn = $('#btnLogin');
+  if (!btn) return;
+  btn.textContent = auth.token ? '👤 ' + (auth.name || '已登录') : '👤 微信登录';
+}
+
+function requireAgree() {
+  const box = $('#agreeBox');
+  if (box && box.checked) return true;
+  $('#agreeTip').classList.add('show');
+  return false;
+}
+
+async function authFetch(path, payload, token) {
+  const headers = { 'Content-Type': 'application/json', apikey: API_KEY };
+  if (token) headers.Authorization = 'Bearer ' + token;
+  const res = await fetch(AUTH_API + path, { method: 'POST', headers: headers, body: JSON.stringify(payload) });
+  let data = null;
+  try { data = await res.json(); } catch (e) { data = null; }
+  if (!res.ok) throw new Error((data && (data.msg || data.error_description || data.error)) || 'http_' + res.status);
+  return data;
+}
+
+function applySession(session) {
+  auth.token = session.access_token || '';
+  const user = session.user || {};
+  auth.userId = user.id || '';
+  auth.name = (user.user_metadata && user.user_metadata.username) || (user.email || '').split('@')[0] || '玩家';
+  saveAuth();
+  updateLoginChip();
+}
+
+async function wechatLogin() {
+  if (auth.busy) return;
+  if (!requireAgree()) return;
+  auth.busy = true;
+  const btn = $('#btnWxLogin');
+  btn.disabled = true;
+  setLoginStatus('loading', '正在唤起微信授权…');
+  try {
+    const res = await fetch(WX_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: API_KEY },
+      body: JSON.stringify({ action: 'start', redirectUri: location.origin + location.pathname })
+    });
+    const data = await res.json();
+    if (!res.ok || !data || data.ok !== true) throw new Error('start_failed');
+    if (!data.configured) {
+      setLoginStatus('error', '微信授权暂未开通，可先用下方「其他登录方式」');
+      $('#otherPanel').classList.add('show');
+      return;
+    }
+    location.href = data.url;
+  } catch (e) {
+    setLoginStatus('error', '唤起微信授权失败，请稍后重试或改用账号密码登录');
+  } finally {
+    auth.busy = false;
+    btn.disabled = false;
+  }
+}
+
+async function finishWechatRedirect() {
+  const params = new URLSearchParams(location.search);
+  const code = params.get('code');
+  if (!code) return false;
+  history.replaceState(null, '', location.origin + location.pathname);
+  show('login');
+  setLoginStatus('loading', '正在完成微信授权登录…');
+  try {
+    const res = await fetch(WX_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: API_KEY },
+      body: JSON.stringify({ action: 'callback', code: code })
+    });
+    const data = await res.json();
+    if (!res.ok || !data || data.ok !== true) throw new Error('callback_failed');
+    if (data.configured === false) throw new Error('not_configured');
+    const session = await authFetch('/verify', { type: 'magiclink', token_hash: data.tokenHash });
+    applySession(session);
+    await bindPlayer();
+    toast(data.isNew ? '微信登录成功，已为你建档' : '微信登录成功', 'ok');
+    setLoginStatus('', '');
+    show('home');
+    updateHUD();
+    return true;
+  } catch (e) {
+    setLoginStatus('error', '微信授权失败，请重试或改用其他登录方式');
+    $('#otherPanel').classList.add('show');
+    return true;
+  }
+}
+
+async function passwordAuth(mode) {
+  if (auth.busy) return;
+  if (!requireAgree()) return;
+  const user = $('#authUser').value.trim();
+  const pwd = $('#authPwd').value;
+  if (!user || user.length < 5) { setLoginStatus('error', '请输入手机号或至少 5 位用户名'); return; }
+  if (!pwd || pwd.length < 6) { setLoginStatus('error', '密码至少 6 位'); return; }
+  const email = user.indexOf('@') > 0 ? user : user + '@miaoda.com';
+  auth.busy = true;
+  setLoginStatus('loading', mode === 'register' ? '正在创建账号…' : '正在登录…');
+  try {
+    let session;
+    if (mode === 'register') {
+      const signup = await authFetch('/signup', { email: email, password: pwd, data: { username: user.split('@')[0] } });
+      session = signup.access_token ? signup : await authFetch('/token?grant_type=password', { email: email, password: pwd });
+    } else {
+      session = await authFetch('/token?grant_type=password', { email: email, password: pwd });
+    }
+    applySession(session);
+    await bindPlayer();
+    toast(mode === 'register' ? '注册并登录成功' : '登录成功', 'ok');
+    setLoginStatus('', '');
+    show('home');
+    updateHUD();
+  } catch (e) {
+    const msg = String(e.message || '');
+    if (msg.indexOf('Invalid login') >= 0) setLoginStatus('error', '账号或密码不正确');
+    else if (msg.indexOf('already') >= 0) setLoginStatus('error', '该账号已注册，请直接登录');
+    else setLoginStatus('error', '登录失败：' + (msg || '请稍后重试'));
+  } finally {
+    auth.busy = false;
+  }
+}
+
+async function bindPlayer() {
+  if (!auth.token) return;
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: API_KEY, Authorization: 'Bearer ' + auth.token },
+      body: JSON.stringify({ action: 'bind', deviceId: deviceId(), token: auth.token })
+    });
+    const data = await res.json();
+    if (data && data.ok === true && data.player) {
+      applyServerPlayer(data.player);
+      updateHUD();
+      updateWheelUI();
+      refreshPrizes();
+    }
+  } catch (e) { /* 绑定失败不阻塞登录 */ }
+}
+
+async function refreshAuth() {
+  readAuth();
+  updateLoginChip();
+  if (!auth.token) return;
+  try {
+    const res = await fetch(AUTH_API + '/user', {
+      headers: { apikey: API_KEY, Authorization: 'Bearer ' + auth.token }
+    });
+    if (!res.ok) throw new Error('stale');
+    const user = await res.json();
+    auth.userId = user.id || auth.userId;
+    auth.name = (user.user_metadata && user.user_metadata.username) || (user.email || '').split('@')[0] || '玩家';
+    saveAuth();
+    updateLoginChip();
+  } catch (e) {
+    auth.token = '';
+    auth.name = '';
+    auth.userId = '';
+    saveAuth();
+    updateLoginChip();
+  }
+}
+
+function logoutUser() {
+  auth.token = '';
+  auth.name = '';
+  auth.userId = '';
+  saveAuth();
+  updateLoginChip();
+  toast('已退出登录');
+  show('login');
+  setLoginStatus('', '');
+}
+
+async function bootAuth() {
+  const handled = await finishWechatRedirect();
+  await refreshAuth();
+  if (handled) return;
+  if (!auth.token) {
+    show('login');
+  }
+}
+
+function goAdmin() {
+  history.replaceState(null, '', '#admin');
+  if (state.admin) { renderAdmin(); show('admin'); }
+  else show('adminLogin');
+}
+
+function exitAdmin() {
+  history.replaceState(null, '', location.pathname + location.search);
+  show('home');
+  updateHUD();
+}
+
+async function adminLogin() {
+  const acct = $('#admAcct').value.trim();
+  const pwd = $('#admPwd').value;
+  const err = $('#admErr');
+  if (!acct || !pwd) {
+    err.textContent = '请输入账号与密码';
+    return;
+  }
+  err.textContent = '正在验证…';
+  let allowed = false;
+  let offline = false;
+  try {
+    await api('admin_login', { account: acct, password: pwd });
+    allowed = true;
+  } catch (e) {
+    offline = e.message !== 'bad_credentials';
+    allowed = offline && acct === ADMIN_ACCT && pwd === ADMIN_PWD;
+  }
+  if (allowed) {
+    state.admin = true;
+    adminCreds.account = acct;
+    adminCreds.password = pwd;
+    err.textContent = offline ? '离线校验通过，云端数据暂不可用' : '';
+    $('#admPwd').value = '';
+    tone(880, 0.12, 'triangle', 0.07);
+    renderAdmin();
+    show('admin');
+  } else {
+    state.admin = false;
+    adminCreds.account = '';
+    adminCreds.password = '';
+    err.textContent = '账号或密码错误，请重新输入';
+    tone(180, 0.12, 'square', 0.05);
+  }
+}
+
+function renderAdmin() {
+  const cards = $('#adminCards');
+  if (!cards) return;
+  cards.innerHTML = '';
+  const prizeTotal = PRIZE_ORDER.reduce((n, k) => n + (state.prizes[k] | 0), 0);
+  const items = [
+    ['金豆余额', state.beans],
+    ['抽奖机会', state.chances],
+    ['重排道具', state.props.shuffle],
+    ['连续签到', state.sign.streak + ' 天'],
+    ['累计签到', state.sign.total + ' 次'],
+    ['累计抽奖', state.stats.spins + ' 次'],
+    ['累计金豆', state.stats.beans],
+    ['已发奖品', prizeTotal + ' 个']
+  ];
+  items.forEach((row) => {
+    const card = document.createElement('div');
+    card.className = 'admin-card';
+    const k = document.createElement('span');
+    k.textContent = row[0];
+    const v = document.createElement('b');
+    v.textContent = String(row[1]);
+    card.appendChild(k);
+    card.appendChild(v);
+    cards.appendChild(card);
+  });
+
+  const log = $('#adminSignLog');
+  log.innerHTML = '';
+  if (!state.sign.log.length) {
+    const e = document.createElement('div');
+    e.className = 'admin-empty';
+    e.textContent = '暂无签到记录';
+    log.appendChild(e);
+  } else {
+    state.sign.log.slice().reverse().forEach((it) => {
+      const row = document.createElement('div');
+      row.className = 'admin-row';
+      const d = document.createElement('span');
+      d.textContent = it.d;
+      const v = document.createElement('b');
+      v.textContent = '🪙' + it.bean + (it.chance ? ' 🎟️' + it.chance : '');
+      row.appendChild(d);
+      row.appendChild(v);
+      log.appendChild(row);
+    });
+  }
+
+  const plist = $('#adminPrizes');
+  plist.innerHTML = '';
+  PRIZE_ORDER.forEach((k) => {
+    const meta = PRIZE_META[k];
+    const row = document.createElement('div');
+    row.className = 'admin-row';
+    const n = document.createElement('span');
+    n.textContent = meta.name;
+    const v = document.createElement('b');
+    v.textContent = (state.prizes[k] | 0) + ' 个';
+    row.appendChild(n);
+    row.appendChild(v);
+    plist.appendChild(row);
+  });
+  const adRow = document.createElement('div');
+  adRow.className = 'admin-row';
+  const adN = document.createElement('span');
+  adN.textContent = '广告观看（解锁进度）';
+  const adV = document.createElement('b');
+  adV.textContent = state.adCount + ' / ' + CONFIG.AD_FOR_DOLL;
+  adRow.appendChild(adN);
+  adRow.appendChild(adV);
+  plist.appendChild(adRow);
+
+  const cfg = $('#adminCfg');
+  cfg.innerHTML = '';
+  const addRow = (label, id, val) => {
+    const row = document.createElement('div');
+    row.className = 'cfg-row';
+    const lb = document.createElement('label');
+    lb.textContent = label;
+    lb.htmlFor = id;
+    const inp = document.createElement('input');
+    inp.type = 'number';
+    inp.id = id;
+    inp.min = '0';
+    inp.value = String(val);
+    row.appendChild(lb);
+    row.appendChild(inp);
+    cfg.appendChild(row);
+  };
+  addRow('通关奖励抽奖机会', 'cfgWin', cfgWin());
+  CONFIG.WHEEL.forEach((it, i) => addRow('转盘权重 · ' + it.label, 'cfgW' + i, cfgWeight(i)));
+  SHOP_ITEMS.forEach((it, i) => addRow('商城价格 · ' + it.name, 'cfgC' + i, cfgCost(i)));
+  loadAdminCloud();
+  loadAdminOrders();
+}
+
+async function loadAdminCloud() {
+  const box = $('#adminServer');
+  if (!box) return;
+  if (!adminCreds.account) {
+    box.textContent = '';
+    const tip = document.createElement('div');
+    tip.className = 'admin-empty';
+    tip.textContent = '当前为离线校验模式，联网后重新登录可查看全服数据';
+    box.appendChild(tip);
+    return;
+  }
+  box.textContent = '';
+  const loading = document.createElement('div');
+  loading.className = 'admin-empty';
+  loading.textContent = '正在读取云端数据…';
+  box.appendChild(loading);
+
+  let data = null;
+  try {
+    data = await api('admin_stats', { account: adminCreds.account, password: adminCreds.password });
+  } catch (e) {
+    box.textContent = '';
+    const fail = document.createElement('div');
+    fail.className = 'admin-empty';
+    fail.textContent = '云端数据读取失败，下方仍显示本机数据';
+    box.appendChild(fail);
+    return;
+  }
+
+  box.textContent = '';
+  const addRow = function (label, value) {
+    const row = document.createElement('div');
+    row.className = 'admin-row';
+    const k = document.createElement('span');
+    k.textContent = label;
+    const v = document.createElement('b');
+    v.textContent = String(value);
+    row.appendChild(k);
+    row.appendChild(v);
+    box.appendChild(row);
+  };
+
+  addRow('注册玩家数', data.totals.players + ' 人');
+  addRow('全服金豆总量', data.totals.beans);
+  addRow('全服抽奖机会', data.totals.chances);
+  addRow('全服签到次数', data.totals.signs);
+  addRow('全服抽奖次数', data.totals.spins);
+  PRIZE_ORDER.forEach(function (k) {
+    addRow('全服发放 · ' + PRIZE_META[k].name, (data.prizeCounts[k] || 0) + ' 个');
+  });
+  if (data.signLogs && data.signLogs.length) {
+    data.signLogs.slice(0, 8).forEach(function (l) {
+      addRow('签到 · ' + l.deviceId + ' · ' + l.date, '🪙' + l.bean + (l.chance ? ' 🎟️' + l.chance : ''));
+    });
+  }
+  if (data.players && data.players.length) {
+    data.players.slice(0, 6).forEach(function (p) {
+      addRow('玩家 · ' + p.deviceId, '🪙' + p.beans + ' 🎟️' + p.chances + ' 📅' + p.signs);
+    });
+  }
+}
+
+async function saveCfg() {
+  const win = Math.max(0, Math.min(10, parseInt($('#cfgWin').value, 10) || 0));
+  const weights = CONFIG.WHEEL.map((it, i) => Math.max(0, Math.min(999, parseInt($('#cfgW' + i).value, 10) || 0)));
+  const costs = SHOP_ITEMS.map((it, i) => Math.max(0, Math.min(9999, parseInt($('#cfgC' + i).value, 10) || 0)));
+  if (weights.reduce((a, b) => a + b, 0) <= 0) {
+    toast('转盘权重不能全部为 0');
+    return;
+  }
+  state.cfg = { winChance: win, weights, costs };
+  save();
+  updateHUD();
+  sfxCoin();
+  toast('配置已保存并生效', 'ok');
+  renderAdmin();
+
+  if (!adminCreds.account) return;
+  try {
+    const data = await api('admin_config', {
+      account: adminCreds.account,
+      password: adminCreds.password,
+      config: { winChance: win, weights: weights, costs: costs }
+    });
+    applyServerConfig(data.config);
+    writeCache();
+    toast('全局配置已写入数据库，将下发给所有玩家', 'ok');
+    loadAdminCloud();
+  } catch (e) {
+    toast('云端写入失败，已暂存本机配置');
+  }
+}
+
+async function exportData() {
+  if (adminCreds.account) {
+    try {
+      const server = await api('admin_export', { account: adminCreds.account, password: adminCreds.password });
+      downloadJson(server, 'village-game-data.json');
+      toast('已导出全服数据', 'ok');
+      return;
+    } catch (e) { /* 回退本机导出 */ }
+  }
+  const data = {
+    exportedAt: new Date().toISOString(),
+    save: {
+      chances: state.chances,
+      beans: state.beans,
+      props: state.props,
+      prizes: state.prizes,
+      adCount: state.adCount,
+      sign: state.sign,
+      stats: state.stats,
+      cfg: state.cfg
+    }
+  };
+  downloadJson(data, 'village-game-data-local.json');
+  toast('已导出本机数据', 'ok');
+}
+
+function downloadJson(data, filename) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+}
+
+function resetSave() {
+  if (!window.confirm('确定重置本机存档？金豆、道具、奖品与签到记录都会清空。')) return;
+  localStorage.removeItem(SAVE_KEY);
+  location.reload();
+}
+
+/* ============================================================
+金豆商城
+============================================================ */
+const SHOP_ITEMS = [
+  { key: 'shuffle1', icon: '🔄', name: '重排道具 ×1', desc: '关卡内重排全部方块，不消耗抽奖机会', cost: 30, grant: 'shuffle', n: 1, tier: 'virtual', stock: -1 },
+  { key: 'shuffle3', icon: '🔄', name: '重排道具 ×3', desc: '囤货价，单个仅约 25 金豆', cost: 70, grant: 'shuffle', n: 3, tier: 'virtual', stock: -1 },
+  { key: 'chance1', icon: '🎟️', name: '抽奖机会 ×1', desc: '立即获得 1 次转盘抽奖机会', cost: 50, grant: 'chance', n: 1, tier: 'virtual', stock: -1 },
+  { key: 'chance3', icon: '🎟️', name: '抽奖机会 ×3', desc: '囤货价，单个仅约 40 金豆', cost: 115, grant: 'chance', n: 3, tier: 'virtual', stock: -1 },
+  { key: 'keyring', icon: '🔑', name: '村庄麦穗钥匙扣', desc: '锌合金滴胶钥匙扣，打卡拍照都好看', cost: 300, tier: 'merch', stock: 30 },
+  { key: 'fridge', icon: '🧲', name: '村庄主题冰箱贴', desc: '一组田园插画冰箱贴，随机 3 枚', cost: 450, tier: 'merch', stock: 25 },
+  { key: 'tote', icon: '👜', name: '田园帆布袋', desc: '加厚棉帆布，印村庄插画，日常通勤可用', cost: 600, tier: 'merch', stock: 18 },
+  { key: 'bear', icon: '🐻', name: '毛绒小熊挂链', desc: '转盘同款限量奖品，商城直兑不用碰运气', cost: 1200, tier: 'prize', stock: 10 },
+  { key: 'bracelet', icon: '📿', name: '金珠手串', desc: '高价值实物大奖，含礼盒包装', cost: 1800, tier: 'prize', stock: 5 }
+];
+
+const SHOP_TIERS = [
+  { id: 'virtual', label: '轻量虚拟好礼', note: '30 金豆起 · 立即到账' },
+  { id: 'merch', label: '实用周边', note: '需填写收货信息 · 包邮' },
+  { id: 'prize', label: '高价值实物大奖', note: '库存有限 · 先兑先得' }
+];
+
+const CATALOG = {};
+let catalogAt = 0;
+const REDEEM_LOG = 'village-redeem-log-v1';
+
+function stockOf(it) {
+  const c = CATALOG[it.key];
+  if (c && typeof c.stock === 'number') return c.stock;
+  return typeof it.stock === 'number' ? it.stock : -1;
+}
+
+function refreshCatalog() {
+  if (Date.now() - catalogAt < 20000) return;
+  catalogAt = Date.now();
+  api('shop_catalog', {}).then((d) => {
+    if (!d || !d.ok || !Array.isArray(d.items)) return;
+    d.items.forEach((o) => { CATALOG[o.key] = o; });
+    if ($('#modal').classList.contains('show')) openShop();
+  }).catch(() => {});
+}
+
+function readRedeemLog() {
+  try {
+    const d = JSON.parse(localStorage.getItem(REDEEM_LOG) || '[]');
+    return Array.isArray(d) ? d : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function addRedeemRecord(it, voucher) {
+  const log = readRedeemLog();
+  log.unshift({
+    voucher: voucher,
+    item_name: it.name,
+    cost: cfgCost(SHOP_ITEMS.indexOf(it)),
+    tier: it.tier,
+    status: it.tier === 'virtual' ? 'issued' : 'pending',
+    created_at: new Date().toISOString()
+  });
+  try {
+    localStorage.setItem(REDEEM_LOG, JSON.stringify(log.slice(0, 50)));
+  } catch (e) { /* 忽略 */ }
+}
+
+function openShop() {
+  const box = $('#modalBox');
+  box.className = 'modal-box shop-box';
+  box.innerHTML = '';
+
+  const head = document.createElement('div');
+  head.className = 'shop-head';
+  const title = document.createElement('h2');
+  title.className = 'shop-title';
+  title.textContent = '🛒 金豆商城';
+  const bal = document.createElement('span');
+  bal.className = 'shop-balance';
+  bal.innerHTML = '🪙 <b>' + state.beans + '</b> 金豆';
+  const logBtn = document.createElement('button');
+  logBtn.className = 'btn small';
+  logBtn.textContent = '🧾 记录';
+  logBtn.onclick = () => openRedeemHistory();
+  head.appendChild(title);
+  head.appendChild(bal);
+  head.appendChild(logBtn);
+  box.appendChild(head);
+  refreshCatalog();
+
+  const list = document.createElement('div');
+  list.className = 'shop-list';
+  let lastTier = '';
+  SHOP_ITEMS.forEach((it, idx) => {
+    if (it.tier !== lastTier) {
+      lastTier = it.tier;
+      const meta = SHOP_TIERS.filter((t) => t.id === it.tier)[0] || { label: '', note: '' };
+      const h = document.createElement('div');
+      h.className = 'shop-tier';
+      h.textContent = meta.label;
+      const note = document.createElement('span');
+      note.className = 'shop-tier-note';
+      note.textContent = meta.note;
+      h.appendChild(note);
+      list.appendChild(h);
+    }
+    const row = document.createElement('div');
+    row.className = 'shop-row';
+
+    const ico = document.createElement('div');
+    ico.className = 'shop-ico';
+    ico.textContent = it.icon;
+
+    const info = document.createElement('div');
+    info.className = 'shop-info';
+    const nm = document.createElement('div');
+    nm.className = 'shop-name';
+    nm.textContent = it.name;
+    const ds = document.createElement('div');
+    ds.className = 'shop-desc';
+    ds.textContent = it.desc;
+    info.appendChild(nm);
+    info.appendChild(ds);
+
+    const price = cfgCost(idx);
+    const stock = stockOf(it);
+    const stockEl = document.createElement('div');
+    stockEl.className = 'shop-stock' + (stock === 0 ? ' out' : '');
+    stockEl.textContent = stock < 0 ? '不限量' : (stock > 0 ? '剩余 ' + stock + ' 件' : '已售罄');
+    info.appendChild(stockEl);
+
+    const buy = document.createElement('button');
+    buy.className = 'shop-buy';
+    if (stock === 0) {
+      buy.textContent = '已售罄';
+      buy.disabled = true;
+    } else if (state.beans < price) {
+      buy.textContent = '差 ' + (price - state.beans) + ' 金豆';
+      buy.disabled = true;
+    } else {
+      buy.textContent = price + ' 金豆';
+      buy.onclick = () => buyItem(it, idx);
+    }
+
+    row.appendChild(ico);
+    row.appendChild(info);
+    row.appendChild(buy);
+    list.appendChild(row);
+  });
+  box.appendChild(list);
+
+  const tip = document.createElement('div');
+  tip.className = 'shop-tip';
+  tip.textContent = '当前持有：重排道具 ' + state.props.shuffle + ' 个 · 抽奖机会 ' + state.chances + ' 次。金豆由转盘奖励获得。';
+  box.appendChild(tip);
+
+  const bar = document.createElement('div');
+  bar.className = 'modal-btns';
+  const close = document.createElement('button');
+  close.className = 'btn';
+  close.textContent = '关闭';
+  close.onclick = closeModal;
+  bar.appendChild(close);
+  box.appendChild(bar);
+
+  $('#modal').classList.add('show');
+}
+
+function buyItem(it, idx) {
+  const cost = cfgCost(idx);
+  if (stockOf(it) === 0) {
+    toast('该礼品已兑换完，换一个试试');
+    return;
+  }
+  if (state.beans < cost) {
+    sfxBad();
+    toast('金豆不足，还差 ' + (cost - state.beans) + ' 金豆');
+    return;
+  }
+  showModal({
+    icon: it.icon,
+    title: '确认兑换',
+    text: '<b>' + it.name + '</b><br>将消耗 <b>' + cost + '</b> 金豆（余额 ' + state.beans + '）<br><br>兑换前需看完一段激励视频，<b>中途退出不扣积分、不发凭证</b>。',
+    buttons: [
+      { label: '看广告并兑换', cls: 'orange', onClick: () => startRedeemAd(it) },
+      { label: '再想想' }
+    ]
+  });
+}
+
+function startRedeemAd(it) {
+  startAd('redeem', it);
+}
+
+/* 广告看完后的统一出口：兑换 / 抽奖机会奖励 / 中途退出 */
+/* 插屏广告：仅原生包内生效。
+   触发时机改为「结算弹窗里玩家点了按钮之后」，而不是自动弹出——
+   自动弹会盖住「通关成功/去抽奖」，玩家点不到按钮，收益也不一定计入。
+   频控：每 3 局一次 + 间隔 ≥ 2 分钟；激励视频进行中不插。 */
+let AD_INTER_ROUNDS = 0;
+let AD_INTER_LAST = 0;
+
+function maybeShowInterstitial() {
+  try {
+    if (AD_CTX) return;
+    const bridge = getAdBridge();
+    if (!bridge || typeof bridge.showInterstitial !== 'function') return;
+    AD_INTER_ROUNDS += 1;
+    if (AD_INTER_ROUNDS % 3 !== 0) return;
+    const now = Date.now();
+    if (now - AD_INTER_LAST < 120000) return;
+    AD_INTER_LAST = now;
+    adTrack('interstitial', 'impression');
+    bridge.showInterstitial();
+  } catch (e) {
+    adTrack('interstitial', 'error', { reason: 'bridge_exception' });
+  }
+}
+
+function onAdDone(result) {
+  const ctx = AD_CTX;
+  clearTimeout(AD_WD);
+  if (result === 'error' && CONFIG.AD_FALLBACK) {
+    toast('广告暂不可用，已切换本地模拟');
+    runSimulatedAd();
+    return;
+  }
+  AD_CTX = null;
+  if (result === 'reward') {
+    adTrack('rewarded', 'complete', { purpose: ctx ? ctx.purpose : 'unknown' });
+    $('#adOverlay').classList.remove('show');
+    clearInterval(state.adTimer);
+    if (ctx && ctx.purpose === 'redeem') {
+      afterRedeemAd(ctx.item);
+    } else if (ctx && ctx.purpose === 'prop') {
+      rewardPropAd();
+    } else {
+      finishAd();
+    }
+    return;
+  }
+  if (result === 'closed') {
+    adTrack('rewarded', 'close', { purpose: ctx ? ctx.purpose : 'unknown' });
+    $('#adOverlay').classList.remove('show');
+    clearInterval(state.adTimer);
+    sfxBad();
+    if (ctx && ctx.purpose === 'redeem') toast('广告未看完，本次兑换已取消，积分未扣除');
+    else if (ctx && ctx.purpose === 'prop') toast('广告未看完，本次未发放道具');
+    else toast('广告未看完，本次未获得奖励');
+    return;
+  }
+  adTrack('rewarded', 'error', { reason: 'sdk_error' });
+  toast('广告暂时不可用，请稍后再试');
+}
+
+function afterRedeemAd(it) {
+  if (stockOf(it) === 0) {
+    toast('手慢了，该礼品刚被兑完，积分未扣除');
+    sfxBad();
+    openShop();
+    return;
+  }
+  if (it.tier === 'virtual') {
+    finishRedeem(it, null);
+    return;
+  }
+  shipTarget = { mode: 'redeem', key: it.key, name: it.name, item: it };
+  $('#shipPrize').textContent = '奖品：' + it.name + '。观看已完成，请填写收货信息，我们将在 7 个工作日内安排发货。';
+  $('#shipErr').textContent = '';
+  $('#shipModal').classList.add('show');
+}
+
+async function finishRedeem(it, ship) {
+  const cost = cfgCost(SHOP_ITEMS.indexOf(it));
+  if (state.beans < cost) {
+    sfxBad();
+    toast('金豆不足，兑换未完成');
+    return false;
+  }
+  try {
+    const data = await api('redeem', { itemKey: it.key, ship: ship || null, token: auth.token || '' });
+    if (!data || data.ok !== true) throw new Error('failed');
+    state.beans -= cost;
+    if (it.grant === 'shuffle') state.props.shuffle += it.n;
+    else if (it.grant === 'chance') state.chances += it.n;
+    if (typeof data.stock === 'number') {
+      CATALOG[it.key] = Object.assign({}, CATALOG[it.key] || {}, { stock: data.stock });
+    }
+    save();
+    updateHUD();
+    updateWheelUI();
+    sfxCoin();
+    addRedeemRecord(it, data.voucher);
+    showRedeemSuccess(it, data.voucher);
+    return true;
+  } catch (e) {
+    const code = (e && e.message) || '';
+    sfxBad();
+    if (code === 'sold_out') toast('该礼品已兑换完，积分未扣除');
+    else if (code === 'missing_ship' || code === 'bad_phone' || code === 'bad_address') toast('收货信息不完整，请检查后重试');
+    else toast('兑换未完成，积分未扣除，请稍后再试');
+    return false;
+  }
+}
+
+function showRedeemSuccess(it, voucher) {
+  showModal({
+    icon: it.icon || '🎁',
+    title: '兑换成功',
+    text: '<b>' + it.name + '</b><br>已扣除 <b>' + cfgCost(SHOP_ITEMS.indexOf(it)) + '</b> 金豆<br>兑换凭证：<span class="shop-voucher">' + voucher + '</span>',
+    buttons: [
+      { label: '查看兑换记录', cls: 'blue', onClick: () => openRedeemHistory() },
+      { label: '继续逛商城', cls: 'orange', onClick: () => openShop() },
+      { label: '好的' }
+    ]
+  });
+}
+
+async function openRedeemHistory() {
+  closeModal();
+  const box = $('#modalBox');
+  box.className = 'modal-box shop-box';
+  box.innerHTML = '';
+  const head = document.createElement('div');
+  head.className = 'shop-head';
+  const title = document.createElement('h2');
+  title.className = 'shop-title';
+  title.textContent = '🧾 兑换记录';
+  const close = document.createElement('button');
+  close.className = 'btn small';
+  close.textContent = '关闭';
+  close.onclick = () => { closeModal(); openShop(); };
+  head.appendChild(title);
+  head.appendChild(close);
+  box.appendChild(head);
+
+  const list = document.createElement('div');
+  list.className = 'shop-list';
+  box.appendChild(list);
+  $('#modal').classList.add('show');
+
+  const local = readRedeemLog();
+  let rows = local.slice();
+  renderRedeemRows(list, rows, '正在同步云端记录…');
+
+  try {
+    const data = await api('redeem_history', {});
+    if (data && data.ok && Array.isArray(data.orders)) {
+      const merged = data.orders.map((o) => ({
+        voucher: o.voucher,
+        item_name: o.item_name,
+        cost: o.cost,
+        tier: o.tier,
+        status: o.status,
+        created_at: o.created_at,
+        address: [o.province, o.city, o.district, o.address].filter(Boolean).join('')
+      }));
+      local.forEach((l) => {
+        if (!merged.some((m) => m.voucher === l.voucher)) merged.push(l);
+      });
+      rows = merged;
+      renderRedeemRows(list, rows);
+    } else {
+      renderRedeemRows(list, rows);
+    }
+  } catch (e) {
+    renderRedeemRows(list, rows, '云端记录暂时读不到，以下为本机记录');
+  }
+}
+
+function renderRedeemRows(list, rows, tip) {
+  list.innerHTML = '';
+  if (tip) {
+    const t = document.createElement('div');
+    t.className = 'shop-desc';
+    t.textContent = tip;
+    list.appendChild(t);
+  }
+  if (!rows.length) {
+    const e = document.createElement('div');
+    e.className = 'shop-desc';
+    e.textContent = '还没有兑换记录，去商城挑一件吧';
+    list.appendChild(e);
+    return;
+  }
+  rows.forEach((r) => {
+    const row = document.createElement('div');
+    row.className = 'shop-log';
+    const main = document.createElement('div');
+    main.className = 'shop-log-main';
+    const nm = document.createElement('div');
+    nm.className = 'shop-log-name';
+    nm.textContent = r.item_name || '礼品';
+    const meta = document.createElement('div');
+    meta.className = 'shop-log-meta';
+    const t = r.created_at ? new Date(r.created_at) : null;
+    meta.textContent = (t && !isNaN(t.getTime()) ? t.toLocaleString('zh-CN') : '') + ' · ' + (r.cost || 0) + ' 金豆 · ' + (r.status === 'pending' ? '待发货' : '已发放');
+    const v = document.createElement('div');
+    v.className = 'shop-log-meta';
+    v.innerHTML = '凭证 <span class="shop-voucher">' + (r.voucher || '') + '</span>' + (r.address ? '<br>' + r.address : '');
+    main.appendChild(nm);
+    main.appendChild(meta);
+    main.appendChild(v);
+    row.appendChild(main);
+    list.appendChild(row);
+  });
+}
+
+function openPrizes() {
+  refreshPrizes();
+  show('prizesScreen');
+}
+
+/* ============================================================
+按钮绑定
+============================================================ */
+function stopGame() {
+  state.playing = false;
+  clearInterval(state.timerId);
+  clearSelection();
+}
+
+$('#btnStart').addEventListener('click', startGame);
+$('#btnGoWheel').addEventListener('click', () => { show('wheelScreen'); updateWheelUI(); });
+$('#btnGoPrizes').addEventListener('click', openPrizes);
+$('#btnBackHome').addEventListener('click', () => { stopGame(); show('home'); updateHUD(); });
+$('#btnBackHome2').addEventListener('click', () => { show('home'); updateHUD(); });
+$('#btnBackHome3').addEventListener('click', () => { show('home'); updateHUD(); });
+$('#btnHint').addEventListener('click', useHint);
+$('#btnShuffle').addEventListener('click', useShuffle);
+$('#btnSpin').addEventListener('click', spin);
+$('#wheelCenter').addEventListener('click', spin);
+$('#btnWatchAd').addEventListener('click', watchAd);
+$('#btnPropAd').addEventListener('click', requestPropAd);
+$('#btnShop').addEventListener('click', openShop);
+$('#btnShop2').addEventListener('click', openShop);
+$('#btnSign').addEventListener('click', openSignModal);
+$('#btnExportHtml').addEventListener('click', openExportModal);
+$('#btnLogin').addEventListener('click', () => {
+  if (auth.token) {
+    const box = $('#modalBox');
+    box.className = 'modal-box';
+    box.innerHTML = '';
+    const h = document.createElement('h2');
+    h.className = 'shop-title';
+    h.textContent = '👤 ' + (auth.name || '玩家');
+    const p = document.createElement('div');
+    p.className = 'shop-tip';
+    p.textContent = '当前账号已登录，游戏数据与账号绑定并同步到云端。';
+    box.appendChild(h);
+    box.appendChild(p);
+    const bar = document.createElement('div');
+    bar.className = 'modal-btns';
+    const out = document.createElement('button');
+    out.className = 'btn small';
+    out.textContent = '退出登录';
+    out.onclick = () => { closeModal(); logoutUser(); };
+    const ok = document.createElement('button');
+    ok.className = 'btn small orange';
+    ok.textContent = '继续游戏';
+    ok.onclick = closeModal;
+    bar.appendChild(ok);
+    bar.appendChild(out);
+    box.appendChild(bar);
+    $('#modal').classList.add('show');
+  } else {
+    show('login');
+    setLoginStatus('', '');
+  }
+});
+$('#btnWxLogin').addEventListener('click', wechatLogin);
+$('#btnShipSubmit').addEventListener('click', submitShip);
+$('#btnShipCancel').addEventListener('click', () => $('#shipModal').classList.remove('show'));
+$('#btnOrdFilter').addEventListener('click', () => loadAdminOrders());
+$('#btnOrdExport').addEventListener('click', exportOrders);
+$('#btnOther').addEventListener('click', () => {
+  $('#otherPanel').classList.toggle('show');
+});
+$('#btnSkip').addEventListener('click', () => { show('home'); updateHUD(); });
+$('#btnAuthLogin').addEventListener('click', () => passwordAuth('login'));
+$('#btnAuthRegister').addEventListener('click', () => passwordAuth('register'));
+$('#authPwd').addEventListener('keydown', (e) => { if (e.key === 'Enter') passwordAuth('login'); });
+$('#btnAgreeOk').addEventListener('click', () => { $('#agreeTip').classList.remove('show'); });
+$('#btnAgreeGo').addEventListener('click', () => {
+  $('#agreeBox').checked = true;
+  $('#agreeTip').classList.remove('show');
+  wechatLogin();
+});
+$('#linkTerms').addEventListener('click', (e) => {
+  e.preventDefault();
+  $('#agreeTip').classList.add('show');
+});
+$('#linkPrivacy').addEventListener('click', (e) => {
+  e.preventDefault();
+  $('#agreeTip').classList.add('show');
+});
+$('#btnAdmin').addEventListener('click', goAdmin);
+$('#btnAdmLogin').addEventListener('click', adminLogin);
+$('#admPwd').addEventListener('keydown', (e) => { if (e.key === 'Enter') adminLogin(); });
+$('#admAcct').addEventListener('keydown', (e) => { if (e.key === 'Enter') adminLogin(); });
+$('#btnAdmBack').addEventListener('click', exitAdmin);
+$('#btnAdminExit').addEventListener('click', () => { state.admin = false; exitAdmin(); });
+$('#btnCfgSave').addEventListener('click', saveCfg);
+$('#btnExport').addEventListener('click', exportData);
+$('#btnReset').addEventListener('click', resetSave);
+$('#btnMusic').addEventListener('click', () => {
+  state.musicOff = !state.musicOff;
+  save();
+  updateMusicBtn();
+  if (state.musicOff) Music.stop();
+  else Music.start();
+});
+$('#btnSfx').addEventListener('click', () => {
+  state.sfx = !state.sfx;
+  save();
+  updateHUD();
+  if (state.sfx) tone(700, 0.08, 'sine', 0.05);
+});
+board.addEventListener('click', onBoardClick);
+
+/* ============================================================
+初始化
+============================================================ */
+function updateMusicBtn() {
+  const btn = $('#btnMusic');
+  if (!btn) return;
+  btn.classList.toggle('off', state.musicOff);
+  btn.textContent = state.musicOff ? '🔇 静音' : '🎵 音乐';
+}
+
+function init() {
+  const firstVisit = loadSave();
+  preloadWheelImages();
+  drawWheel();
+  paintBG();
+  updateHUD();
+  updateWheelUI();
+  refreshPrizes();
+  requestAnimationFrame(renderLoop);
+  setInterval(updateAdBtn, 1000);
+  adPreload();
+  syncPull();
+  bootAuth();
+  const deepAdmin = location.hash === '#admin' || /[?&]admin=1/.test(location.search);
+  if (deepAdmin) {
+    show('adminLogin');
+  } else {
+    setTimeout(() => {
+      if (!signInfo().signedToday) openSignModal();
+    }, 500);
+  }
+  if (firstVisit && !deepAdmin) setTimeout(() => toast('新手赠送 1 次抽奖机会 🎁'), 600);
+}
+
+let resizeTimer = 0;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    paintBG();
+    setupLines();
+  }, 160);
+});
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => { paintBG(); setupLines(); }, 260);
+});
+
+init();
+</script>
+</body>
+</html>

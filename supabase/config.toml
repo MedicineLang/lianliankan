@@ -1,0 +1,6 @@
+project_id = "supabase380911212357005312"
+[auth.email]
+enable_confirmations = false
+
+[auth.phone]
+enable_confirmations = false
