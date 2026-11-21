@@ -1,0 +1,26 @@
+# 用法：把本文件复制到仓库根目录的 .github/workflows/build-apk.yml
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Generate wrapper
+        working-directory: android-app
+        run: gradle wrapper --gradle-version 8.7
+      - name: Assemble debug APK
+        working-directory: android-app
+        run: ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: village-link-apk
+          path: android-app/app/build/outputs/apk/debug/*.apk
